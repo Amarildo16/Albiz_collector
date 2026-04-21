@@ -1,0 +1,12 @@
+python -m albiz_collector.cli init-db
+# strongest stable baseline
+python -m albiz_collector.cli run app-exports
+python -m albiz_collector.cli run app-exports --years 2025 --years 2026
+# experimental / exploratory
+python -m albiz_collector.cli run qkb-notices
+python -m albiz_collector.cli run qkb-notices --playwright
+# primary QKB path
+python -m albiz_collector.cli run qkb-search --nipt M21528028T
+python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 2026-04-17
+python -m albiz_collector.cli run qkb-search --nipt M21528028T --playwright
+python -m albiz_collector.cli scheduler

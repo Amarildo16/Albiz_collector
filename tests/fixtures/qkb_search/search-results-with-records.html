@@ -1,0 +1,944 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Kërko Për Subjekt</title>
+
+	<!-- Bootstrap -->
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet"
+		integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
+	<!-- Flatpicker | date calendar -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+	<!-- Custom Font -->
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+
+	<!-- pdf.js viewer -->
+	<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf_viewer.min.css"> -->
+
+	<!-- Custom -->
+			<link rel="stylesheet"
+			href="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/search-for-subject-view.css">
+		<link rel="stylesheet"
+			href="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/validation/form-validation.css">
+		<link rel="stylesheet"
+			href="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/search-form/search-form.css">
+		<link rel="stylesheet"
+			href="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/banner/banner.css">
+		<link rel="stylesheet"
+			href="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/item-template/item-template.css">
+	</head>
+
+
+<body>
+	<!-- Body content -->
+
+	<!-- Banner -->
+	<!-- <h2 class="text-center fs-2">Kërko Për Subjekt</h2> -->
+
+	<div class="container my-4">
+		<div><div class="hero-banner d-flex align-items-center justify-content-start text-white">
+
+	<h2 class="d-flex align-items-center ms-3">
+					<img src="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/banner/1.png"
+				alt="icon" class="iconInline me-2" />
+		
+		KËRKO PËR SUBJEKT NË REGJISTRIN TREGTAR
+	</h2>
+</div></div>
+		<div class="row g-3">
+			<!-- search form card section -->
+			<div class="col-md-4 fw-bold">
+				<div class="p-4 rounded shadow-sm custom-scrollbar searchFormHeight" style="background-color: #EEF4F9;">
+					<h4 class="mb-3 cyanText fw-bold">Fushat e Kërkimit</h5>
+						
+<form id="searchForm" method="post" action="">
+	<input type="hidden" name="orderColumn" id="orderColumn" value="0">
+	<input type="hidden" name="orderDir" id="orderDir" value="asc">
+
+
+	<div class="card mb-2 border border-0 shadow-sm">
+		<!-- This card header always remains (ghost bar when body is hidden) -->
+		<div class="card-header clickable-header d-flex justify-content-between align-items-center rounded-top px-3 py-2 cardHeaderColours"
+			data-bs-toggle="collapse" data-bs-target="#subjectDataCollapse" aria-expanded="true"
+			aria-controls="subjectDataCollapse">
+			<span class="h5 mb-0">Të dhënat e subjektit</span>
+			<i class="bi bi-chevron-down"></i>
+		</div>
+
+		<!-- Collapsible Card body -->
+		<div class="collapse show" id="subjectDataCollapse">
+			<div class="card-body p-4 shadow-sm rounded">
+				<div class="mb-3">
+					<input type="text" class="form-control" id="nipt" name="nipt" placeholder="NIPT"
+						value="">
+				</div>
+
+				<div class="mb-3">
+					<input type="text" class="form-control" id="emriISubjektit" name="emriISubjektit"
+						placeholder="Emri i subjektit"
+						value="">
+				</div>
+
+				<div class="mb-3">
+					<input type="text" class="form-control" id="emriTregtar" name="emriTregtar"
+						placeholder="Emri tregtar"
+						value="">
+				</div>
+
+				<!-- <div class="mb-3">
+					<input type="text" class="form-control" id="statusiIBiznesit" name="statusiIBiznesit"
+						placeholder="Statusi i subjektit"
+						value="">
+				</div> -->
+
+				<div class="mb-3">
+					<select class="form-select" id="formeLigjore" name="formeLigjore">
+						<option value="" selected>Formë ligjore</option>
+													<option value="Person Fizik" >
+								Person Fizik							</option>
+													<option value="Shoqeri me pergjegjesi te kufizuar" >
+								Shoqëri me përgjegjësi të kufizuar							</option>
+													<option value="Shoqeri aksionare" >
+								Shoqëri aksionare							</option>
+													<option value="Dege e Shoqerise se huaj" >
+								Degë e Shoqërisë së huaj							</option>
+													<option value="Shoqeri Kolektive" >
+								Shoqëri Kolektive							</option>
+													<option value="Shoqeri e Thjeshte" >
+								Shoqëri e Thjeshtë							</option>
+													<option value="Shoqeri Komandite" >
+								Shoqëri Komandite							</option>
+													<option value="Shoqeri Kursim Krediti" >
+								Shoqëri Kursim Krediti							</option>
+													<option value="Shoqeri Bashkeveprim Reciprok" >
+								Shoqëri Bashkëveprim Reciprok							</option>
+													<option value="Shoqeri e Bashkepunimit Bujqesor" >
+								Shoqëri e Bashkëpunimit Bujqësor							</option>
+													<option value="Shoqeri Aksionare me Oferte Publike" >
+								Shoqëri Aksionare me Ofertë Publike							</option>
+													<option value="Zyre Perfaqesimi" >
+								Zyrë Përfaqësimi							</option>
+											</select>
+				</div>
+
+				<div class="mb-3">
+					<select class="form-select" id="pronesia" name="pronesia">
+						<option value="" selected>Pronësia</option>
+													<option value="Shqiptare (100%)" >
+								Shqiptare (100%)							</option>
+													<option value="E huaj (100%)" >
+								E huaj (100%)							</option>
+													<option value="E perbashket (shqiptare-e huaj)" >
+								E përbashkët (shqiptare-e huaj)							</option>
+													<option value="Shteterore Shqiptare" >
+								Shtetërore Shqiptare							</option>
+											</select>
+				</div>
+
+				<div class="mb-3">
+					<h6 class="fw-bold mb-2 cyanText">Data e regjistrimit</h6>
+				</div>
+
+				<div class="mb-3">
+					<input type="text" class="form-control" id="dataNga" name="dataNga"
+						placeholder="Regjistruar nga data"
+						value="01/04/2025">
+				</div>
+
+				<div class="mb-3">
+					<input type="text" class="form-control" id="dataNe" name="dataNe"
+						placeholder="Regjistruar deri në datën"
+						value="17/04/2026">
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="card mb-2 border border-0 shadow-sm">
+		<!-- This card header always remains (ghost bar when body is hidden) -->
+		<div class="card-header clickable-header d-flex justify-content-between align-items-center collapsed rounded-top px-3 py-2 cardHeaderColours"
+			data-bs-toggle="collapse" data-bs-target="#individualDataCollapse"
+			aria-expanded="false"
+			aria-controls="individualDataCollapse">
+			<span class="h5 mb-0">Të dhënat e individit</span>
+			<i class="bi bi-chevron-down"></i>
+		</div>
+
+		<!-- Collapsible Card body -->
+		<div class="collapse " id="individualDataCollapse">
+			<div class="card-body p-4 shadow-sm rounded">
+				<div class="mb-3">
+					<input type="text" class="form-control" id="numriId" name="numriId"
+						placeholder="Numri i identifikimit"
+						value="">
+				</div>
+
+				<div class="mb-3">
+					<input type="text" class="form-control" id="administrator" name="administrator"
+						placeholder="Emri i Individit"
+						value="">
+				</div>
+
+				<div class="mb-3">
+					<input type="text" class="form-control" id="aksionerOrtak" name="aksionerOrtak"
+						placeholder="Emri i Aksionerit/Ortakut"
+						value="">
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="card mb-2 border border-0 shadow-sm">
+		<!-- This card header always remains (ghost bar when body is hidden) -->
+		<div class="card-header clickable-header d-flex justify-content-between align-items-center collapsed rounded-top px-3 py-2 cardHeaderColours"
+			data-bs-toggle="collapse" data-bs-target="#sectorCollapse"
+			aria-expanded="false"
+			aria-controls="sectorCollapse">
+			<span class="h5 mb-0">Objekti i aktivitetit</span>
+			<i class="bi bi-chevron-down"></i>
+		</div>
+
+		<!-- Collapsible Card body -->
+		<div class="collapse " id="sectorCollapse">
+			<div class="card-body p-4 shadow-sm rounded">
+				<div class="mb-3">
+					<input type="text" class="form-control" id="sektoriIVeprimtarise" name="sektoriIVeprimtarise"
+						placeholder="Objekti i aktivitetit"
+						value="">
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="card mb-2 border border-0 shadow-sm">
+		<!-- Card header, clickable, collapses body on click -->
+		<div class="card-header clickable-header d-flex justify-content-between align-items-center collapsed rounded-top px-3 py-2 cardHeaderColours"
+			data-bs-toggle="collapse" data-bs-target="#locationCollapse"
+			aria-expanded="false" aria-controls="locationCollapse">
+			<span class="h5 mb-0">Vendndodhja</span>
+			<i class="bi bi-chevron-down"></i>
+		</div>
+
+		<!-- Card body, collapsible -->
+		<div class="collapse " id="locationCollapse">
+			<div class="card-body p-4 shadow-sm rounded">
+				<div class="mb-3">
+					<select class="form-select" id="qarku" name="qarku">
+						<option value="" selected>Qarku</option>
+													<option value="berat" >
+								Berat							</option>
+													<option value="diber" >
+								Dibër							</option>
+													<option value="durres" >
+								Durrës							</option>
+													<option value="elbasan" >
+								Elbasan							</option>
+													<option value="fier" >
+								Fier							</option>
+													<option value="gjirokaster" >
+								Gjirokastër							</option>
+													<option value="korce" >
+								Korcë							</option>
+													<option value="kukes" >
+								Kukës							</option>
+													<option value="lezhe" >
+								Lezhë							</option>
+													<option value="shkoder" >
+								Shkodër							</option>
+													<option value="tirane" >
+								Tiranë							</option>
+													<option value="vlore" >
+								Vlorë							</option>
+											</select>
+				</div>
+
+				<div class="mb-3">
+					<select class="form-select" id="qyteti" name="qyteti">
+						<option value="" selected>Qyteti</option>
+													<option value="berat" >
+								Berat							</option>
+													<option value="kuçove" >
+								Kuçovë							</option>
+													<option value="skrapar" >
+								Skrapar							</option>
+													<option value="bulqize" >
+								Bulqizë							</option>
+													<option value="diber" >
+								Dibër							</option>
+													<option value="mat" >
+								Mat							</option>
+													<option value="durres" >
+								Durrës							</option>
+													<option value="kruje" >
+								Krujë							</option>
+													<option value="elbasan" >
+								Elbasan							</option>
+													<option value="gramsh" >
+								Gramsh							</option>
+													<option value="librazhd" >
+								Librazhd							</option>
+													<option value="peqin" >
+								Peqin							</option>
+													<option value="fier" >
+								Fier							</option>
+													<option value="lushnje" >
+								Lushnjë							</option>
+													<option value="mallakaster" >
+								Mallakastër							</option>
+													<option value="gjirokaster" >
+								Gjirokastër							</option>
+													<option value="permet" >
+								Përmet							</option>
+													<option value="tepelene" >
+								Tepelenë							</option>
+													<option value="korce" >
+								Korçë							</option>
+													<option value="pogradec" >
+								Pogradec							</option>
+													<option value="devoll" >
+								Devoll							</option>
+													<option value="kolonje" >
+								Kolonjë							</option>
+													<option value="has" >
+								Has							</option>
+													<option value="kukes" >
+								Kukës							</option>
+													<option value="tropoje" >
+								Tropojë							</option>
+													<option value="kurbin" >
+								Kurbin							</option>
+													<option value="lac" >
+								Laç							</option>
+													<option value="lezhe" >
+								Lezhë							</option>
+													<option value="mirdite" >
+								Mirditë							</option>
+													<option value="shkoder" >
+								Shkodër							</option>
+													<option value="malesi e madhe" >
+								Malësi e Madhe							</option>
+													<option value="puke" >
+								Pukë							</option>
+													<option value="tirane" >
+								Tiranë							</option>
+													<option value="kavaje" >
+								Kavajë							</option>
+													<option value="sarande" >
+								Sarandë							</option>
+													<option value="vlore" >
+								Vlorë							</option>
+													<option value="delvine" >
+								Delvinë							</option>
+											</select>
+				</div>
+
+				<div class="mb-3">
+					<input type="text" class="form-control" id="adresa" name="adresa" placeholder="Adresa"
+						value="">
+				</div>
+			</div>
+		</div>
+
+	</div>
+	<div class="p-4 rounded mb-2 border-0">
+		<div class="d-flex searchButtonsFlex justify-content-center gap-2">
+			<button type="submit" class="btn btn-kerko">Kërko</button>
+			<button type="button" id="clearBtn" class="btn btn-pastro">Pastro</button>
+		</div>
+	</div>
+
+</form>				</div>
+			</div>
+			<div class="col-md-8">
+				<!-- shadow-sm -->
+				<div class="p-4" style="height: calc(100vh - 200px);">
+					<h4 class="mb-3 cyanText fw-bold">Rezultatet e Kërkimit</h5>
+
+						<!-- notifications -->
+						<!-- items list -->
+						<!-- Notification -->
+
+
+<!-- List JS Instance -->
+<div id="subject-list" class="mb-5 d-flex flex-column h-100">
+
+	<!-- live search box -->
+	<div class="mb-3 text-end">
+		<input id="list-search" class="search form-control d-inline-block d-none" style="max-width:300px"
+			placeholder="Kërko…" />
+	</div>
+
+
+	<div class="d-flex flex-column flex-grow-1">
+		<ul class="list list-unstyled flex-grow-1 overflow-auto custom-scrollbar"></ul>
+
+		<div class="text-center">
+			<ul class="pagination justify-content-center mt-4"></ul>
+		</div>
+	</div>
+</div>				</div>
+			</div>
+		</div>
+	</div>
+
+
+
+
+
+	<!-- Bootstrap modal -->
+	<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="detailModalLabel">Detaje Subjekti</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Mbylle"></button>
+			</div>
+			<div class="modal-body">
+				<div class="container" id="detailModalBody">
+					<!-- we’ll fill these rows dynamically -->
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">NIPT</div>
+						<div class="col-12 col-md-8 fw-bold" data-field="nipti"></div>
+					</div>
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Emri i Subjektit</div>
+						<div class="col-12 col-md-8 fw-bold" data-field="emriISubjektit"></div>
+					</div>
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Emri tregtar</div>
+						<div class="col-sm-8" data-field="emriTregtar"></div>
+					</div>
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Data e regjistrimit</div>
+						<div class="col-12 col-md-8 fw-bold" data-field="dataERegjistrimit"></div>
+					</div>
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Formë ligjore</div>
+						<div class="col-12 col-md-8 fw-bold" data-field="formaLigjore"></div>
+					</div>
+					<!-- <div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Statusi subjektit</div>
+						<div class="col-12 col-md-8 fw-bold" data-field="statusiISubjektit"></div>
+					</div> -->
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Objekti i aktivitetit</div>
+						<div class="col-sm-8 overflow-auto" style="max-height: 6rem;" data-field="sektoriIVeprimtarise">
+						</div>
+					</div>
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Administrator/ Ortak/ Aksionar</div>
+						<div class="col-12 col-md-8" data-field="adminOrtakAksionar"></div>
+					</div>
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Qyteti</div>
+						<div class="col-sm-8" data-field="qyteti"></div>
+					</div>
+					<div class="row mb-2 border-bottom">
+						<div class="col-12 col-md-4">Pronësia</div>
+						<div class="col-sm-8" data-field="shtetesia"></div>
+					</div>
+				</div>
+
+				<!-- tabbed documents -->
+				<div class="container" id="viewAndDownload">
+
+					<!-- Nav-pills -->
+					<ul class="nav nav-pills mb-3 flex-column flex-md-row justify-content-end gap-2" id="docPills"
+						role="tablist">
+
+						<li class="nav-item me-2" role="presentation">
+							<button class="btn btn-outline-danger flag-btn me-1 btn-square" data-bs-toggle="popover"
+								data-bs-html="true" data-bs-content="" tabindex="0">
+								<i class="bi bi-flag-fill fs-3"></i>
+							</button>
+						</li>
+
+						<li class="nav-item me-2" role="presentation">
+							<div class="d-flex flex-md-row w-100">
+								<!-- Viewer button: hidden on small screens -->
+								<button
+									class="nav-link btn btn-light px-3 py-1 mb-2 mb-md-0 me-md-1 me-sm-1 flex-grow-1 d-none d-sm-inline-flex"
+									style="white-space: nowrap;" data-doc="rpp" type="button" role="tab"
+									aria-selected="false">
+									Ekstrakt RPP
+								</button>
+
+								<!-- Download button: visible always, with label only on mobile -->
+								<span class="d-block d-sm-none me-2">Ekstrakt RPP</span>
+								<button
+									class="btn btn-outline-danger d-flex align-items-center justify-content-center download-btn"
+									data-doc="rpp" type="button">
+									<i class="bi bi-download"></i>
+									<span class="spinner-border spinner-border-sm d-none" role="status"
+										aria-hidden="true"></span>
+								</button>
+							</div>
+						</li>
+
+						<li class="nav-item me-2" role="presentation">
+							<div class="d-flex flex-md-row w-100">
+								<!-- Viewer button: hidden on small screens -->
+								<button
+									class="nav-link btn btn-light px-3 py-1 mb-2 mb-md-0 me-md-1 me-sm-1 flex-grow-1 d-none d-sm-inline-flex"
+									style="white-space: nowrap;" data-doc="simple" type="button" role="tab"
+									aria-selected="false">
+									Ekstrakt i thjeshtë
+								</button>
+
+
+								<!-- Download button: visible always, with label only on mobile -->
+								<span class="d-block d-sm-none me-2">Ekstrakt i thjeshtë</span>
+								<button
+									class="btn btn-outline-danger d-flex align-items-center justify-content-center download-btn"
+									data-doc="simple" type="button">
+									<i class="bi bi-download"></i>
+									<span class="spinner-border spinner-border-sm d-none" role="status"
+										aria-hidden="true"></span>
+								</button>
+							</div>
+						</li>
+
+						<li class="nav-item me-2" role="presentation">
+							<div class="d-flex flex-md-row w-100">
+								<!-- Viewer button: hidden on small screens -->
+								<button
+									class="nav-link btn btn-light px-3 py-1 mb-2 mb-md-0 me-md-1 me-sm-1 flex-grow-1 d-none d-sm-inline-flex"
+									data-doc="historical" type="button" role="tab" aria-selected="false">
+									Ekstrakt historik
+								</button>
+
+								<!-- Download button: visible always, with label only on mobile -->
+								<span class="d-block d-sm-none me-2">Ekstrakt historik</span>
+								<button
+									class="btn btn-outline-danger d-flex align-items-center justify-content-center download-btn"
+									data-doc="historical" type="button">
+									<i class="bi bi-download"></i>
+									<span class="spinner-border spinner-border-sm d-none" role="status"
+										aria-hidden="true"></span>
+								</button>
+							</div>
+						</li>
+					</ul>
+
+					<!-- Single collapse container -->
+					<div id="docCollapse" class="collapse">
+						<div class="card card-body">
+							<div class="doc-content overflow-auto" style="max-width: 800px; height: 500px;">
+								<div id="pdfSpinner" class="d-flex justify-content-center align-items-center h-100">
+									<div class="spinner-border text-primary" role="status">
+										<span class="visually-hidden">Loading…</span>
+									</div>
+								</div>
+
+								<iframe id="pdfViewer" width="100%" height="100%"></iframe>
+							</div>
+						</div>
+					</div>
+
+
+					<!-- Hidden spans for popover content -->
+					<span class="showRedFlag d-none"></span>
+					<span class="rppRedFlagText d-none"></span>
+					<span class="bilanciRedFlagText d-none"></span>
+					<span class="adminRedFlagText d-none"></span>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+	<!-- Bootstrap -->
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"
+		integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO"
+		crossorigin="anonymous"></script>
+
+	<!-- Flatpicker | date calendar -->
+	<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+	<script src="https://npmcdn.com/flatpickr/dist/l10n/sq.js"></script>
+
+	<!-- Datatable -->
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+	<!-- Just Validate library -->
+	<script src="https://unpkg.com/just-validate@latest/dist/just-validate.production.min.js"></script>
+
+	<!-- List JS -->
+	<script src="//cdnjs.cloudflare.com/ajax/libs/list.js/2.3.1/list.min.js"></script>
+
+	<!-- Dexie js -->
+	<script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+
+
+	<!-- custom js -->
+			<script
+			src="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/validation/form-validation.js"></script>
+		<script
+			src="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/document-handler.js"></script>
+		<script
+			src="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/indexed-db-handler.js"></script>
+		<script
+			src="https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/search-form/search-form.js"></script>
+		<!-- -----------  -->
+
+	<script>
+		var fullUrl = "";
+					fullUrl = 'https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/'
+		
+		var response = null;
+					response = JSON.parse("[{\"nipti\":\"M61617507C\",\"emriISubjektit\":\"Petro 2025\",\"emriTregtar\":\"Petro 2025\",\"sektoriIVeprimtarise\":\"Dh\\u00ebnie automjetesh me qera.\",\"adminOrtakAksionar\":\"Sokol Brunga;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Durres\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617047A\",\"emriISubjektit\":\"VINTERRA\",\"emriTregtar\":\"VINTERRA\",\"sektoriIVeprimtarise\":\"Aktivitet ne fushen e turizmit rural, Prodhimi dhe tregtim, i veres dhe pijeve te tjera alkoolike, agrobiznesit, hotelerise, bar - kafe, restorant, Agroturizem per ofrim ushqimi dhe ambjente per qellime pushimi, bujtina, kamping, hotel shendetesore, shoqerore dhe per veprimtari turistike.\",\"adminOrtakAksionar\":\"Migena Schroder;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"E Huaj (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M67817505E\",\"emriISubjektit\":\"HOTEL EDEN\",\"emriTregtar\":\"HOTEL EDEN\",\"sektoriIVeprimtarise\":\"HOTEL\",\"adminOrtakAksionar\":\"Qerim Letaj;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Lezhe\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617209K\",\"emriISubjektit\":\"Kristo Stramarko\",\"emriTregtar\":\"Helios Hotel\",\"sektoriIVeprimtarise\":\"Strukturte akomoduese hotel, Bar kafe etj\\n\",\"adminOrtakAksionar\":\"Kristo Stramarko;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617046P\",\"emriISubjektit\":\"Xhevdet Plaku\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Tregeti me pakice Lule Natyrale.\",\"adminOrtakAksionar\":\"Xhevdet Plaku;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617703P\",\"emriISubjektit\":\"Sidorela Muda\",\"emriTregtar\":\"Dor\\u2019as pastry caf\\u00e9\",\"sektoriIVeprimtarise\":\"Bar Kafe ,Pasticeri.\",\"adminOrtakAksionar\":\"Sidorela Muda;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Diber\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617045H\",\"emriISubjektit\":\"Pllumb Ndreca\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Hidroizolime\",\"adminOrtakAksionar\":\"Pllumb Ndreca;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617044A\",\"emriISubjektit\":\"ARBEN GJIKA\",\"emriTregtar\":\"Arben Gjika  PF\",\"sektoriIVeprimtarise\":\"Punime fasadash dyer dritare  plastike \",\"adminOrtakAksionar\":\"Arben Gjika;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617043O\",\"emriISubjektit\":\"Mare My Albania Real Estate\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Sh\\u00ebrbime marketingu digjital;Rrjete sociale;Web dizajn;Identitet brandi; Ndermjetesim Shitje Blerje pasuri tepaluajtshme; Negocime;Kerkim dhe Zhvillim Tregu;Konsult Tregu; Studim Fizibiliteti Brandi;Konsulence Marketingu;Analize SWOT;Kerkim Studim sjellje konsumatori, etj.Shoq\\u00ebria mund t\\u00eb kryej\\u00eb gjithashtu t\\u00eb gjitha operacionet tregtare, mbi pasuri t\\u00eb luajtshme dhe t\\u00eb paluajtshme, operacione financiare, industriale, q\\u00eb do t\\u00eb vler\\u00ebsohen t\\u00eb nevojshme apo t\\u00eb dobishme p\\u00ebr realizimin e objektit t\\u00eb shoq\\u00ebris\\u00eb si dhe t\\u00eb blej\\u00eb pjes\\u00ebmarrje n\\u00eb kapitalin themeltar t\\u00eb shoq\\u00ebrive t\\u00eb tjera q\\u00eb kan\\u00eb objekt t\\u00eb nj\\u00ebjt\\u00eb, t\\u00eb ngjash\\u00ebm apo q\\u00eb lidhet me t\\u00eb vetin. Shoq\\u00ebria n\\u00eb ushtrimin e aktivitetit t\\u00eb saj, do t\\u00eb marr\\u00eb t\\u00eb gjitha autorizimet e lejet e nevojshme pran\\u00eb institucioneve publike shqiptare, dhe do t\\u00eb mb\\u00ebshtetet n\\u00eb rregullat dhe normat n\\u00eb fuqi n\\u00eb lidhje me ushtrimin e veprimtaris\\u00eb s\\u00eb saj t\\u00eb rregullt ekonomike.    \",\"adminOrtakAksionar\":\"Denis Lila;Elti Parisi;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617506R\",\"emriISubjektit\":\"AREA51.AL\",\"emriTregtar\":\"AREA51.AL\",\"sektoriIVeprimtarise\":\"Import - eksport t\\u00eb l\\u00ebnd\\u00ebve t\\u00eb para dhe vetrorezin\\u00ebs p\\u00ebr prodhimin e anijeve, varkave turistike dhe mjeteve t\\u00eb tjera t\\u00eb lundrimit. Montim, prodhim, import - eksport i anijeve, varkave turistike dhe mjeteve t\\u00eb tjera lundruese. Import - eksport dhe ushqim p\\u00ebr kafsh\\u00eb. Riparim t\\u00eb automjeteve. Aktiviteti kryhet n\\u00eb fush\\u00ebn e p\\u00ebrpunimit aktiv\",\"adminOrtakAksionar\":\"Lucca Ballestracci;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Durres\",\"shtetesia\":\"E Huaj (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M67817504T\",\"emriISubjektit\":\"Mirela Vokrri\",\"emriTregtar\":\"ICON STREET VIP\",\"sektoriIVeprimtarise\":\"Tregtim  veshje dhe aksesor te ndryshem \\n\",\"adminOrtakAksionar\":\"Mirela Vokrri;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Lezhe\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M69017002A\",\"emriISubjektit\":\"Tonin Shqalshi\",\"emriTregtar\":\"Tonin Shqalsi PF\",\"sektoriIVeprimtarise\":\"Aktivitete te Agjenteve  ne Sigurime.\",\"adminOrtakAksionar\":\"Tonin Shqalshi;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Lezhe\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617042G\",\"emriISubjektit\":\"Leo Dalipi\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Lavazh\",\"adminOrtakAksionar\":\"Leo Dalipi;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617208C\",\"emriISubjektit\":\"Eleni Nanaj\",\"emriTregtar\":\"Global impact consulting\",\"sektoriIVeprimtarise\":\"Aktivitete per organizata nderkombetare dhe kombetare, ekspertize per menaxhim projektesh, trajnimesh, shkrim manualesh, dhe vleresim projektesh\",\"adminOrtakAksionar\":\"Eleni Nanaj;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617041V\",\"emriISubjektit\":\"Ermela Marku\",\"emriTregtar\":\"mela_lashess_\",\"sektoriIVeprimtarise\":\"Parukeri Estetike\",\"adminOrtakAksionar\":\"Ermela Marku;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617040N\",\"emriISubjektit\":\"Wesly Taxi\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Sherbim Taxi 4+1, urban dhe interurban\",\"adminOrtakAksionar\":\"Lindita Zeqiraj;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617039J\",\"emriISubjektit\":\"Jerina Rushiti\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Tregti me pakic\\u00eb e veshjeve\\n\",\"adminOrtakAksionar\":\"Jerina Rushiti;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617038B\",\"emriISubjektit\":\"Enio Shpataraku\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Interior design,konsulence mbi projektime,si dhe projektime dhe zbatim te punimeve  te objekteve te banimit,sherbimit,hoteleri-turiz\\u00ebm etj.\",\"adminOrtakAksionar\":\"Enio Shpataraku;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617037Q\",\"emriISubjektit\":\"Diagonal Invest \",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Veprimtari ndertim objektesh , ndertim veprash rrugore, industriale, turistike, etj. Tregtim, import-export te materialeve ne fushen e ndertimit..  Aktivitete ne fushen e turizmit, agroturizmit. Ndertim dhe Prodhim Energjie nga centrale eolike, solare, hidrike, gjeotermale, apo forma te tjera prodhimi energjie. Veprimtari ne fushen e sporteve te ndryshme dhe aktiviteteve te tjera argetuese. Veprimtari ne fushen  imobiliare, permes  hapjes dhe menaxhimit  te zyrave imobiliare. Veprimtari ne fushen e finacimit te fushave te ndryshme te ekonomise permes celjes dhe menaxhimit  te fondeve te investimit.\\n\\n\",\"adminOrtakAksionar\":\"Gerta Duraku;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617207R\",\"emriISubjektit\":\"Michelle Marie  Linzy\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Keshillime ne fushen e psikologjise\",\"adminOrtakAksionar\":\"Michelle Marie  Linzy;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"E Huaj (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M67817503L\",\"emriISubjektit\":\"Kristjan Prenga\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Zhvillim software, zhvillim aplikacionesh web.\",\"adminOrtakAksionar\":\"Kristjan Prenga;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Lezhe\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617702H\",\"emriISubjektit\":\"Denis Kalia\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Agroturizem, dhe aktivitetete te lidhura me to dhe cdo aktivitet tjeter te kesaj fushe te lejuara na legjislacioni shqiptar .\",\"adminOrtakAksionar\":\"Denis Kalia;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Diber\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617206J\",\"emriISubjektit\":\"Joana Andoni\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Sherbime ne fushen e Turizmit  , Operator turistik, operator turistik detar.Guida Vi.Private dhe Grupe. dhenie me qera automjete dhe skafe , lojra argetuese. Lundrim per zbavitje. detare, transport turistesh per vete dhe per te trete. Dhenie me qera barka te vogla me motorr qe nuk kane nevoje per patente detare\\n\",\"adminOrtakAksionar\":\"Joana Andoni;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617036I\",\"emriISubjektit\":\"Qazim Drizi\",\"emriTregtar\":\"Kancelari Xhimi\",\"sektoriIVeprimtarise\":\"\",\"adminOrtakAksionar\":\"Qazim Drizi;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617035A\",\"emriISubjektit\":\"Ilda \\u00c7epe\",\"emriTregtar\":\"Ilda Marketing\",\"sektoriIVeprimtarise\":\"Sherbime keshillimi, konsulence, marketingu e publiciteti per biznese dhe individ. Keshillime te tjera per menaxhim\",\"adminOrtakAksionar\":\"Ilda \\u00c7epe;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M62817207P\",\"emriISubjektit\":\"Adela Toska\",\"emriTregtar\":\"Daisy Home\",\"sektoriIVeprimtarise\":\"\",\"adminOrtakAksionar\":\"Adela Toska;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Elbasan\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617205B\",\"emriISubjektit\":\"Sebastjan Dalipaj\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Shitje me pakice automjete te perdorura, makina me qira\",\"adminOrtakAksionar\":\"Sebastjan Dalipaj;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M62817405L\",\"emriISubjektit\":\"Esmeralda Bregasi\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Tregtim me pakic\\u00eb i produkteve ushqimore t\\u00eb ndryshme, p\\u00ebrfshir\\u00eb artikuj t\\u00eb konsumit t\\u00eb p\\u00ebrditsh\\u00ebm, produkte t\\u00eb ambalazhuara dhe t\\u00eb fresk\\u00ebta, mish dhe n\\u00ebnprodukte t\\u00eb tij, si dhe pije t\\u00eb ndryshme.\",\"adminOrtakAksionar\":\"Esmeralda Bregasi;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Fier\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M64017803A\",\"emriISubjektit\":\"Katsiaryna Dubenik\",\"emriTregtar\":\"K\\u00d6L\\u00d6S \",\"sektoriIVeprimtarise\":\"Sherbim marketing\",\"adminOrtakAksionar\":\"Katsiaryna Dubenik;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"E Huaj (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617034P\",\"emriISubjektit\":\"Ergi Sina\",\"emriTregtar\":\"PERSON FIZIK\",\"sektoriIVeprimtarise\":\"Tregeti artikuj veshmbathje artikuj te ndyshem industrial dhe parfumeri  Tregeti kafeje \",\"adminOrtakAksionar\":\"Ergi Sina;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617033H\",\"emriISubjektit\":\"Florentina Domi\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Kryerjen e sherbimeve qe perfshijne por nuk kufizohen ne pagesa faturash & transferta parash, shitje te mallrav\\\/ sherbimeve, rimbushje elektronike etj .Aksesore elektronik .Tabakino.\",\"adminOrtakAksionar\":\"Florentina Domi;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617032A\",\"emriISubjektit\":\"Erigels Lama\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Tabacchino. Tregtim me pakic\\u00eb i artikujve t\\u00eb ndrysh\\u00ebm, p\\u00ebrfshir\\u00eb produkte ushqimore t\\u00eb paketuara, cigare dhe produkte t\\u00eb tjera t\\u00eb duhanit, pije freskuese dhe alkoolike, suvenire, artikuj t\\u00eb konsumit t\\u00eb p\\u00ebrditsh\\u00ebm si dhe produkte t\\u00eb ndryshme industriale.\",\"adminOrtakAksionar\":\"Erigels Lama;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617701A\",\"emriISubjektit\":\"Albert Bitri\",\"emriTregtar\":\"Albert Bitri\",\"sektoriIVeprimtarise\":\"Sherbime TAXI\",\"adminOrtakAksionar\":\"Albert Bitri;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Diber\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617031O\",\"emriISubjektit\":\"PPxAL\",\"emriTregtar\":\"PPxAL\",\"sektoriIVeprimtarise\":\"Shoq\\u00ebria ka p\\u00ebr objekt ushtrimin e t\\u00eb gjitha aktiviteteve tregtare n\\u00eb p\\u00ebrputhje me dispozitat ligjore shqiptare n\\u00eb fuqi. M\\u00eb konkretisht:Zhvillimin, investimin, administrimin, shfryt\\u00ebzimin, dh\\u00ebnien me qira dhe nd\\u00ebrmjet\\u00ebsimin n\\u00eb fush\\u00ebn e pasurive t\\u00eb paluajtshme; ofrimin e sh\\u00ebrbimeve n\\u00eb sektorin e hoteleris\\u00eb, turizmit dhe aktiviteteve t\\u00eb lidhura; dh\\u00ebnien e huave dhe ofrimin e sh\\u00ebrbimeve financiare n\\u00eb pajtim me legjislacionin n\\u00eb fuqi; konsulenc\\u00eb biznesi, menaxheriale dhe strategjike; si dhe ofrimin e sh\\u00ebrbimeve t\\u00eb ndryshme profesionale, teknike, administrative dhe operative.Shoq\\u00ebria mund t\\u00eb ushtroj\\u00eb gjithashtu aktivitete tregtare, financiare, t\\u00eb dh\\u00ebnies me qira ose hipotekimi, t\\u00eb ofroj\\u00eb garanci p\\u00ebr pal\\u00eb t\\u00eb treta, si edhe t\\u00eb marr\\u00eb ose jap\\u00eb me qira nd\\u00ebrmarrje, deg\\u00eb apo nj\\u00ebsi t\\u00eb tjera ekonomike. Shoq\\u00ebria mund t\\u00eb marr\\u00eb pjes\\u00eb n\\u00eb shoq\\u00ebri, nd\\u00ebrmarrje, kompani ose konsorciume t\\u00eb krijuara ose n\\u00eb proces krijimi, t\\u00eb cilat kan\\u00eb objekt t\\u00eb nj\\u00ebjt\\u00eb, t\\u00eb ngjash\\u00ebm ose plot\\u00ebsues me objektin e saj.\",\"adminOrtakAksionar\":\"PPx;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"E Huaj (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M67817502D\",\"emriISubjektit\":\"Olta Beqa\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Qiradhenje te apartamenteve\\\/ njesive  ne pronesi te personit fizk ose te marra me qera nga te tretet\",\"adminOrtakAksionar\":\"Olta Beqa;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Lezhe\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617030G\",\"emriISubjektit\":\"Krenar \\u00c7enga\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Servis kasetafonash\",\"adminOrtakAksionar\":\"Krenar \\u00c7enga;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617029C\",\"emriISubjektit\":\"Leon Toskaj\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Bar kafe\",\"adminOrtakAksionar\":\"Leon Toskaj;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617204Q\",\"emriISubjektit\":\"Kejsi Rama\",\"emriTregtar\":\"Property Management\",\"sektoriIVeprimtarise\":\"Dhenie me qira apartamenti nepermjet platformave online (Airbnb, Booking etj)\",\"adminOrtakAksionar\":\"Kejsi Rama;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617028R\",\"emriISubjektit\":\"Safie Vata\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Shitje Letre\",\"adminOrtakAksionar\":\"Safie Vata;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617027J\",\"emriISubjektit\":\"Arsena Cala\",\"emriTregtar\":\"Arsena Cala\",\"sektoriIVeprimtarise\":\"\\u201cUshtrimi i aktivitetit n\\u00eb fush\\u00ebn e sh\\u00ebrbimeve estetike, p\\u00ebrfshir\\u00eb manikyr, pedikyr, vendosje dhe mir\\u00ebmbajtje t\\u00eb thonjve artificial\\u00eb (gel, akrilik), dekorim thonjsh, trajtime estetike p\\u00ebr duar dhe k\\u00ebmb\\u00eb, si dhe \\u00e7do sh\\u00ebrbim tjet\\u00ebr t\\u00eb lidhur me kujdesin dhe estetik\\u00ebn e tyre.\\u201d\",\"adminOrtakAksionar\":\"Arsena Cala;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M69017301J\",\"emriISubjektit\":\"Antonio Prenga\",\"emriTregtar\":\"BUJTINA MAKRY\",\"sektoriIVeprimtarise\":\"Bujtine. Bar Restorant\",\"adminOrtakAksionar\":\"Antonio Prenga;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Shkoder\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617505J\",\"emriISubjektit\":\"Indrit Dervishi\",\"emriTregtar\":\"Indrit Dervishi PF\",\"sektoriIVeprimtarise\":\"Aktivitete te Agjenteve  ne Sigurime , Import\\\/Export automjetesh, Tregti Shit-blerje Automjete,Import\\\/Export e tregti mallra veshmbathje , pjese kembimi , paisje elektronike, etj. \",\"adminOrtakAksionar\":\"Indrit Dervishi;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Durres\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M67817301G\",\"emriISubjektit\":\"Paris Ndokaj\",\"emriTregtar\":\"BAR PRIAM\",\"sektoriIVeprimtarise\":\"Bar-kafe, lavazh\",\"adminOrtakAksionar\":\"Paris Ndokaj;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Lezhe\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617203I\",\"emriISubjektit\":\"Enea Jatagani\",\"emriTregtar\":\"Keller Williams Vlora\",\"sektoriIVeprimtarise\":\"Agjent Imobiliar\",\"adminOrtakAksionar\":\"Enea Jatagani;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M62817206H\",\"emriISubjektit\":\"Manuel Mu\\u00e7a\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Furre buke \",\"adminOrtakAksionar\":\"Manuel Mu\\u00e7a;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Elbasan\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617026B\",\"emriISubjektit\":\"ADG NEXUS\",\"emriTregtar\":\"Adg Nexus Sh.p.k.\",\"sektoriIVeprimtarise\":\"Objekti kryesor i Shoq\\u00ebris\\u00eb \\u00ebsht\\u00eb t\\u00eb ushtroj\\u00eb veprimtarit\\u00eb e m\\u00ebposhtme:\\n\\na) Konsulenc\\u00eb dhe k\\u00ebshillim n\\u00eb fush\\u00ebn e pron\\u00ebs s\\u00eb paluajtshme t\\u00eb \\u00e7do lloji; \\nb) Menaxhim investimesh n\\u00eb prona, menaxhim portofoli dhe sh\\u00ebrbime menaxhimi asetesh; \\nc) Nd\\u00ebrmjet\\u00ebsim, agjenci, vler\\u00ebsim dhe sh\\u00ebrbime t\\u00eb tjera n\\u00eb pron\\u00ebn e paluajtshme; \\nd) Marketing, promovim, reklamim dhe k\\u00ebrkime tregu t\\u00eb lidhura me pron\\u00ebn e paluajtshme dhe projektet e investimit; \\ne) Blerje, mbajtje, zhvillim, menaxhim, dh\\u00ebnie me qira, marrje me qira dhe shitje e pron\\u00ebs s\\u00eb paluajtshme; \\nf) Import dhe eksport i mallrave dhe sh\\u00ebrbimeve; \\ng) Tregti me shumic\\u00eb dhe pakic\\u00eb e materialeve t\\u00eb nd\\u00ebrtimit, pajisjeve, mobiljeve dhe \\u00e7do malli t\\u00eb lidhur me sektorin e pron\\u00ebs s\\u00eb paluajtshme; \\nh) Dh\\u00ebnie e sh\\u00ebrbimeve ndihm\\u00ebse administrative, teknike, financiare dhe mb\\u00ebshtet\\u00ebse n\\u00eb lidhje me veprimtarit\\u00eb e m\\u00ebsip\\u00ebrme.\\n\\n5.2 P\\u00ebr t\\u00eb arritur objektin e saj, Shoq\\u00ebria mund t\\u00eb kryej\\u00eb \\u00e7do veprim ndihm\\u00ebs ose plot\\u00ebsues, duke p\\u00ebrfshir\\u00eb por pa u kufizuar n\\u00eb:\\n\\n(a) Blerjen, pron\\u00ebsin\\u00eb, menaxhimin dhe shitjen e pasurive t\\u00eb luajtshme dhe t\\u00eb paluajtshme, t\\u00eb drejtave dhe interesave; \\n(b) Lidhjen e t\\u00eb gjitha llojeve t\\u00eb kontratave, p\\u00ebrfshir\\u00eb kontrata qiraje, financimi, hipotekimi, pengu dhe garanci; \\n(c) Pjes\\u00ebmarrjen, blerjen e kuotave ose interesave, ose themelimin e shoq\\u00ebrive t\\u00eb tjera, joint ventures ose partneriteteve n\\u00eb Shqip\\u00ebri ose jasht\\u00eb saj, me objekt t\\u00eb ngjash\\u00ebm ose plot\\u00ebsues; \\n(d) Marrjen e t\\u00eb gjitha licencave, lejeve, autorizimeve dhe regjistrimeve t\\u00eb nevojshme; \\n(e) Kryerjen e veprimtarive botuese, reklamuese dhe promovuese; \\n(f) Kryerjen e \\u00e7do veprimtarie tregtare, financiare, investuese ose huamarr\\u00ebse q\\u00eb \\u00ebsht\\u00eb e dobishme ose e nevojshme p\\u00ebr realizimin e q\\u00ebllimit t\\u00eb saj; \\n(g) \\u00c7do veprimtari tjet\\u00ebr t\\u00eb ligjshme t\\u00eb lejuar nga ligji shqiptar.\\n\\n5.3 Shoq\\u00ebria do t\\u00eb ushtroj\\u00eb veprimtarit\\u00eb e saj n\\u00eb p\\u00ebrputhje t\\u00eb plot\\u00eb me ligjin shqiptar, rregulloret e zbatueshme dhe standardet m\\u00eb t\\u00eb larta profesionale e etike, duke p\\u00ebrfshir\\u00eb parimet e q\\u00ebndrueshm\\u00ebris\\u00eb dhe qeverisjes s\\u00eb mir\\u00eb korporative.\\n\",\"adminOrtakAksionar\":\"ADG NEXUS s.r.o.;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"E Huaj (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617025Q\",\"emriISubjektit\":\"Polidor\",\"emriTregtar\":\"Polidor\",\"sektoriIVeprimtarise\":\"Prodhim dhe shitje e ushqimeve p\\u00ebr qent\\u00eb dhe macet\",\"adminOrtakAksionar\":\"Agron Bendaj;Mukerrem Yegin;Nazmi Kolgjegja;Nihat Poge;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"E P\\u00ebrbashk\\u00ebt (shqiptare - e huaj)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617024I\",\"emriISubjektit\":\"Al Mokhtar Import & Export\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"-\\tKompania operon n\\u00eb importin, eksportin dhe prodhimin e produkteve t\\u00eb qum\\u00ebshtit, duke p\\u00ebrfshir\\u00eb qum\\u00ebshtin dhe djathin, si dhe furnizimin dhe tregtimin e linjave t\\u00eb bluarjes dhe pajisjeve t\\u00eb p\\u00ebrpunimit t\\u00eb drith\\u00ebrave.\",\"adminOrtakAksionar\":\"Hussein ALOMAR;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"E Huaj (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M61617023A\",\"emriISubjektit\":\"Eljona Gaxha\",\"emriTregtar\":\"\",\"sektoriIVeprimtarise\":\"Transport rrugor komb\\u00ebtar i mallrave p\\u00ebr llogari t\\u00eb vet dhe p\\u00ebr t\\u00eb tret\\u00eb. Sh\\u00ebrbime logjistike, magazinimi, shp\\u00ebrndarje dhe agjenci transporti. Ngarkim-shkarkim, organizim dhe menaxhim i transportit t\\u00eb mallrave, si dhe \\u00e7do aktivitet tjet\\u00ebr i lidhur me k\\u00ebt\\u00eb fush\\u00eb.\",\"adminOrtakAksionar\":\"Eljona Gaxha;\",\"formaLigjore\":\"Person Fizik\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Tirane\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false},{\"nipti\":\"M66617202A\",\"emriISubjektit\":\"TRINGAJ\",\"emriTregtar\":\"TRINGAJ SHPK\",\"sektoriIVeprimtarise\":\"Fast-food, bar, restorant, piceri, kreperi, ushqime tradicionale, minimarket etj.\",\"adminOrtakAksionar\":\"Daniel Tringaj;Marcela Tringaj;\",\"formaLigjore\":\"SHPK\",\"tipiISubjektit\":\"\",\"statusiISubjektit\":\"Aprovuar\",\"dataERegjistrimit\":\"17\\\/04\\\/2026\",\"qyteti\":\"Vlore\",\"shtetesia\":\"Shqiptare (100%)\",\"rppRedFlagText\":\"\",\"bilanciRedFlagText\":\"\",\"adminRedFlagText\":\"\",\"showRedFlag\":false}]");
+			console.log(typeof (response));
+
+
+				let currentRec = null;
+
+		// Calendar
+		flatpickr("#dataNga", {
+			locale: "sq",
+			dateFormat: "d/m/Y",
+			allowInput: true,
+			disableMobile: true,
+		});
+		flatpickr("#dataNe", {
+			locale: "sq",
+			dateFormat: "d/m/Y",
+			allowInput: true,
+			disableMobile: true,
+			maxDate: "today",
+		});
+
+
+		var subjectList;
+					fetch('https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/components/list-item-template.php')
+					.then(response => response.text())
+			.then(template => {
+				var options = {
+					page: 10,
+					pagination: true,
+					valueNames: [
+						"nipti",
+						"emriISubjektit",
+						"emriTregtar",
+						"sektoriIVeprimtarise",
+						"formaLigjore",
+						"adminOrtakAksionar",
+						"tipiISubjektit",
+						"statusiISubjektit",
+						"dataERegjistrimit",
+						"qyteti",
+						"shtetesia",
+					],
+					item: template
+				};
+
+				var values = response; // your existing data
+				console.log("test1");
+				subjectList = new List('subject-list', options, values);
+
+				// handleRenderedItems();
+
+				// subjectList.on('updated', handleRenderedItems);
+			});
+
+
+
+		// get rpp flag data
+		async function GetFlagData(fullUrl, nipt) {
+			try {
+				const params = new URLSearchParams({
+					nipt: nipt,
+				});
+				opts = {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/x-www-form-urlencoded'
+					},
+					body: params.toString()
+				};
+
+				endpoint = 'search-for-subject-get-red-flag.php';
+				var response;
+
+				// conditional for wordpress
+				if (fullUrl != null) {
+					response = await fetch(fullUrl + endpoint, opts);
+				}
+				else {
+					response = await fetch("./" + endpoint, opts);
+				}
+				////////////////////////////////
+
+				const json = await response.json();
+				return json;
+			} catch (error) {
+				console.error("Failed to get flag data. Error: ", error)
+			}
+		}
+
+		// flag popover renderer
+		async function initializePopovers(flagDataResponse) {
+			try {
+				const popoverTrigger = document.querySelector('[data-bs-toggle="popover"]');
+				if (!popoverTrigger) return;
+
+				// Clean up any existing popover instance
+				const existing = bootstrap.Popover.getInstance(popoverTrigger);
+				if (existing) {
+					existing.dispose();
+				}
+
+				// Extract text from rendered spans
+				// var rpp = card.querySelector('.rppRedFlagText')?.innerText || "";
+				// var bilanci = card.querySelector('.bilanciRedFlagText')?.innerText || "";
+				// var admin = card.querySelector('.adminRedFlagText')?.innerText || "";
+
+				// Build content
+				var content = `<b>RPP:</b> ${flagDataResponse.data.rppRedFlagText}<br/>
+						 <b>Bilanci:</b> ${flagDataResponse.data.bilanciRedFlagText}<br/>
+						 <b>Admin:</b> ${flagDataResponse.data.adminRedFlagText}`;
+
+				new bootstrap.Popover(popoverTrigger, {
+					content: content,
+					html: true,
+					trigger: 'click',
+					container: 'body',
+					placement: 'top',
+					fallbackPlacements: [],
+				});
+			} catch (error) {
+				console.error("The popover initialisation failed. Error: ", error)
+			}
+		}
+
+
+		// Delegate clicks from the <ul class="list"> container:
+		document.querySelector('#subject-list .list').addEventListener('click', async function (e) {
+			const btn = e.target.closest('.btn-info-local');
+			const spinnerIcon = btn.querySelector('.spinner-border');
+			const infoIcon = btn.querySelector('.bi-info');
+			try {
+
+				// disable info button
+				document.querySelectorAll('.btn-info-local').forEach(el => el.classList.add("disabledInteraction"));
+
+				// add spinner
+				infoIcon.classList.add("d-none");
+				spinnerIcon.classList.remove("d-none");
+
+				if (!btn) return;             // ignore clicks outside the info buttons
+				const li = btn.closest('li');
+				if (!li) return;
+
+
+				// Find the List.js index for this <li>:
+				const idx = subjectList.items.findIndex(item => item.elm === li);
+				if (idx === -1) return;
+
+				// Show details for that record:
+				const rec = subjectList.items[idx].values();
+				currentRec = rec;
+				var flagResponse = await GetFlagData(fullUrl, rec["nipti"]);
+				await initializePopovers(flagResponse);
+
+				if (!flagResponse.data.showRedFlag) {
+					const flagBtn = document.getElementsByClassName('flag-btn');
+					flagBtn[0].classList.add("d-none")
+				}
+
+				document
+					.querySelectorAll('#detailModalBody [data-field]')
+					.forEach(el => {
+						const key = el.dataset.field;
+						el.textContent = rec[key] || "";
+					});
+				new bootstrap.Modal(document.getElementById('detailModal')).show();
+			} catch (error) {
+				console.error("");
+			} finally {
+				spinnerIcon.classList.add("d-none");
+				infoIcon.classList.remove("d-none");
+
+				// enable info buttons
+				document.querySelectorAll('.btn-info-local').forEach(el => el.classList.remove("disabledInteraction"));
+			}
+		});
+
+
+
+
+
+		// init collapse (no auto-toggle)
+		const detailModalEl = document.getElementById('detailModal');
+		const collapseEl = document.getElementById('docCollapse');
+		const docCollapse = new bootstrap.Collapse(collapseEl, { toggle: false });
+
+		const pills = document.querySelectorAll('#docPills .nav-link');
+		const contents = document.querySelectorAll('.doc-content');
+
+		// when a pill is clicked…
+		pills.forEach(pill => {
+			pill.addEventListener('click', () => {
+				const docType = pill.getAttribute('data-doc');
+
+				const alreadyActive = pill.classList.contains('active');
+				if (alreadyActive) {
+					docCollapse.toggle();
+					return;
+				}
+
+				// Activate this pill
+				pills.forEach(p => {
+					p.classList.remove('active');
+					p.setAttribute('aria-selected', 'false');
+				});
+				pill.classList.add('active');
+				pill.setAttribute('aria-selected', 'true');
+
+				// Show the collapse
+				docCollapse.show();
+
+				// Always un-hide the shared .doc-content container
+				document.querySelector('.doc-content').classList.remove('d-none');
+
+				// Fetch and display the selected document
+									fetchAndDisplayPDF(currentRec.nipti, docType, 'https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/');
+							});
+		});
+
+		// download button next to pills
+		document.querySelectorAll('.download-btn').forEach(downloadBtn => {
+			downloadBtn.addEventListener('click', async () => {
+				const docType = downloadBtn.getAttribute('data-doc');
+
+				// if no record is selected, prevent download
+				if (!currentRec || !currentRec.nipti) {
+					showTemporaryAlert("noDoc"); // optional fallback
+					return;
+				}
+
+				// insert te below line in '' and replace null with it in wordpress
+				const spinner = downloadBtn.querySelector('.spinner-border');
+				const icon = downloadBtn.querySelector('.bi-download');
+				icon.classList.add('d-none');
+				spinner.classList.remove('d-none');
+
+				try {
+											await downloadButtonPress(currentRec.nipti, docType, 'https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/');
+									} catch (err) {
+					console.error("Download failed", err);
+					spinner.classList.add('d-none');
+					icon.classList.remove('d-none');
+				} finally {
+					// Restore icon
+					spinner.classList.add('d-none');
+					icon.classList.remove('d-none');
+				}
+			});
+		});
+
+
+		// NEW: on collapse fully hidden, clear all pill active states
+		collapseEl.addEventListener('hidden.bs.collapse', () => {
+			pills.forEach(pill => {
+				pill.classList.remove('active');
+				pill.setAttribute('aria-selected', 'false');
+			});
+		});
+
+		// on modal hide, reset everything
+		detailModalEl.addEventListener('hidden.bs.modal', () => {
+			// reset the document url
+			const parentContainer = document.querySelector('#viewAndDownload');
+			const spinner = document.getElementById('pdfSpinner');
+			const pdf = document.getElementById('pdfViewer');
+
+			parentContainer.querySelectorAll('.alert').forEach(a => a.remove());
+			if (pdf) {
+				// revoke the old object URL if you created one
+				if (pdf.src.startsWith('blob:')) {
+					URL.revokeObjectURL(pdf.src);
+				}
+				// clear and hide
+				spinner.classList.remove('d-none');
+				pdf.src = '';
+				pdf.classList.add('d-none');
+			}
+
+
+			// 1) ensure the collapse is hidden
+			docCollapse.hide();
+
+			// 2) clear all pill active states
+			pills.forEach(pill => {
+				pill.classList.remove('active');
+				pill.setAttribute('aria-selected', 'false');
+			});
+
+			// 3) hide all content panes
+			contents.forEach(c => {
+				c.classList.add('d-none');
+			});
+		});
+
+		// show timed notification
+		function showTemporaryAlert(alertType, timeout = 3000) {
+			const noDocAlert = document.getElementById("fileMissingAlert");
+			const downloadErrorAlert = document.getElementById("downloadDocServerErrorAlert");
+			const closeBtn = document.getElementById("alertCloseBtn");
+
+			// Show alert
+			if (noDocAlert.classList.contains("d-none") && alertType == "noDoc") {
+				noDocAlert.classList.remove("d-none")
+			}
+			if (downloadErrorAlert.classList.contains("d-none") && alertType == "error") {
+				downloadErrorAlert.classList.remove("d-none")
+			}
+
+			// Set timeout to hide it again
+			const hideTimeout = setTimeout(() => {
+				downloadErrorAlert.classList.add("d-none")
+				noDocAlert.classList.add("d-none")
+			}, timeout);
+
+			// Override close button default behavior
+			closeBtn.addEventListener("click", function (e) {
+				e.preventDefault(); // prevent Bootstrap default
+				downloadErrorAlert.classList.add("d-none")
+				noDocAlert.classList.add("d-none")
+				clearTimeout(hideTimeout); // stop auto-hide if manually closed
+			}, { once: true }); // only bind once to avoid duplicates
+		}
+
+		function handleRenderedItems() {
+			subjectList.visibleItems.forEach(function (item) {
+				var element = item.elm;
+				var showFlag = item.values().showRedFlag;
+				if (!showFlag) {
+					element.querySelector('.flag-btn').style.display = 'none';
+				}
+			});
+
+			initializePopovers();
+		}
+
+
+		document.querySelector('#subject-list .list').addEventListener('click', e => {
+			const btn = e.target.closest('.flag-btn');
+			if (!btn || btn.disabled) return;
+			else {
+				// initializePopovers();
+			}
+		});
+
+		document.querySelector("#clearBtn").addEventListener('click', e => {
+			subjectList.clear();
+			subjectList.update();
+
+			document.getElementById("noticeForm").reset();
+		})
+	</script>
+</body>
+
+</html>
