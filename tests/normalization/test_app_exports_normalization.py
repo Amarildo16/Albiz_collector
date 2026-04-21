@@ -106,6 +106,64 @@ class AppExportsNormalizationTests(unittest.TestCase):
             self.assertEqual(len(normalized_rows), 2)
             self.assertEqual(normalized_rows[0].structured_record_id, structured_record_id)
             self.assertEqual(normalized_rows[0].raw_fetch_id, raw_fetch_id)
+            self.assertEqual(normalized_rows[0].source_name, "app_exports")
+            self.assertEqual(normalized_rows[0].snapshot_external_key, "2026")
+
+    def test_materialize_app_exports_is_safe_to_rerun(self) -> None:
+        payload = json.loads(
+            fixture_path("normalization", "app_exports_snapshot_payload.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        csv_content = fixture_path("normalization", "app_procurement_rows.csv").read_bytes()
+        collector = _AppTestCollector()
+
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            with session_factory() as db:
+                raw_fetch = collector.save_raw_fetch(
+                    db,
+                    url="https://www.app.gov.al/GetData/ExportDocument?year=2026",
+                    content=csv_content,
+                    fetch_kind="year_export",
+                    status_code=200,
+                    content_type="text/csv",
+                    filename="app_procurement_2026.csv",
+                    extra_metadata={"year": 2026},
+                )
+                structured_record = StructuredRecord(
+                    source_name="app_exports",
+                    record_type="procurement_export_year",
+                    external_key="2026",
+                    title="APP procurement export 2026",
+                    source_url=raw_fetch.source_url,
+                    content_hash="snapshot-hash",
+                    payload={**payload, "raw_fetch_id": raw_fetch.id},
+                )
+                db.add(structured_record)
+                db.commit()
+
+                first_stats = materialize_app_exports(db)
+                first_rows = db.scalars(
+                    select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.row_ordinal)
+                ).all()
+
+                second_stats = materialize_app_exports(db)
+                second_rows = db.scalars(
+                    select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.row_ordinal)
+                ).all()
+
+            self.assertEqual(first_stats["rows_inserted"], 2)
+            self.assertEqual(first_stats["rows_deleted_before_insert"], 0)
+            self.assertEqual(second_stats["rows_inserted"], 2)
+            self.assertEqual(second_stats["rows_deleted_before_insert"], 2)
+            self.assertEqual(len(first_rows), 2)
+            self.assertEqual(len(second_rows), 2)
+            self.assertEqual(
+                [(row.structured_record_id, row.row_ordinal) for row in second_rows],
+                [(second_rows[0].structured_record_id, 1), (second_rows[1].structured_record_id, 2)],
+            )
 
 
 if __name__ == "__main__":

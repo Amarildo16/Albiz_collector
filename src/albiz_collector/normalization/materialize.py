@@ -16,6 +16,31 @@ from .app_exports import build_normalized_app_export_rows
 from .qkb_search import build_normalized_qkb_search_rows
 
 
+def _base_stats(dataset: str, records: list[StructuredRecord]) -> dict[str, Any]:
+    return {
+        "dataset": dataset,
+        "snapshots_seen": len(records),
+        "snapshots_materialized": 0,
+        "snapshots_failed": 0,
+        "rows_deleted_before_insert": 0,
+        "rows_inserted": 0,
+        "rows_materialized": 0,
+        "errors": [],
+    }
+
+
+def _raw_fetch_for_snapshot(db: Session, record: StructuredRecord) -> RawFetch:
+    payload = record.payload or {}
+    raw_fetch_id = payload.get("raw_fetch_id")
+    if not isinstance(raw_fetch_id, int):
+        raise ValueError("structured snapshot is missing raw_fetch_id")
+
+    raw_fetch = db.get(RawFetch, raw_fetch_id)
+    if raw_fetch is None:
+        raise ValueError(f"raw fetch {raw_fetch_id} not found")
+    return raw_fetch
+
+
 def materialize_app_exports(db: Session) -> dict[str, Any]:
     records = db.scalars(
         select(StructuredRecord)
@@ -26,27 +51,15 @@ def materialize_app_exports(db: Session) -> dict[str, Any]:
         .order_by(StructuredRecord.id)
     ).all()
 
-    stats: dict[str, Any] = {
-        "dataset": "app_exports",
-        "snapshots_seen": len(records),
-        "snapshots_materialized": 0,
-        "rows_materialized": 0,
-        "errors": [],
-    }
+    stats = _base_stats("app_exports", records)
 
     for record in records:
-        payload = record.payload or {}
-        raw_fetch_id = payload.get("raw_fetch_id")
         try:
-            if not isinstance(raw_fetch_id, int):
-                raise ValueError("structured snapshot is missing raw_fetch_id")
-            raw_fetch = db.get(RawFetch, raw_fetch_id)
-            if raw_fetch is None:
-                raise ValueError(f"raw fetch {raw_fetch_id} not found")
+            raw_fetch = _raw_fetch_for_snapshot(db, record)
             csv_content = Path(raw_fetch.storage_path).read_bytes()
             normalized_rows = build_normalized_app_export_rows(record, raw_fetch, csv_content)
 
-            db.execute(
+            delete_result = db.execute(
                 delete(NormalizedAppExportRow).where(
                     NormalizedAppExportRow.structured_record_id == record.id
                 )
@@ -54,9 +67,12 @@ def materialize_app_exports(db: Session) -> dict[str, Any]:
             db.add_all(normalized_rows)
             db.commit()
             stats["snapshots_materialized"] += 1
+            stats["rows_deleted_before_insert"] += delete_result.rowcount or 0
+            stats["rows_inserted"] += len(normalized_rows)
             stats["rows_materialized"] += len(normalized_rows)
         except Exception as exc:
             db.rollback()
+            stats["snapshots_failed"] += 1
             stats["errors"].append({"structured_record_id": record.id, "error": str(exc)})
 
     return stats
@@ -72,18 +88,18 @@ def materialize_qkb_search(db: Session) -> dict[str, Any]:
         .order_by(StructuredRecord.id)
     ).all()
 
-    stats: dict[str, Any] = {
-        "dataset": "qkb_search",
-        "snapshots_seen": len(records),
-        "snapshots_materialized": 0,
-        "rows_materialized": 0,
-        "errors": [],
-    }
+    stats = _base_stats("qkb_search", records)
 
     for record in records:
         try:
+            raw_fetch = _raw_fetch_for_snapshot(db, record)
             normalized_rows = build_normalized_qkb_search_rows(record)
-            db.execute(
+            for row in normalized_rows:
+                row.raw_fetch_id = raw_fetch.id
+                if row.source_url is None:
+                    row.source_url = raw_fetch.source_url
+
+            delete_result = db.execute(
                 delete(NormalizedQkbSearchRow).where(
                     NormalizedQkbSearchRow.structured_record_id == record.id
                 )
@@ -91,9 +107,12 @@ def materialize_qkb_search(db: Session) -> dict[str, Any]:
             db.add_all(normalized_rows)
             db.commit()
             stats["snapshots_materialized"] += 1
+            stats["rows_deleted_before_insert"] += delete_result.rowcount or 0
+            stats["rows_inserted"] += len(normalized_rows)
             stats["rows_materialized"] += len(normalized_rows)
         except Exception as exc:
             db.rollback()
+            stats["snapshots_failed"] += 1
             stats["errors"].append({"structured_record_id": record.id, "error": str(exc)})
 
     return stats

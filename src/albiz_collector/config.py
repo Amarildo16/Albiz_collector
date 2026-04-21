@@ -34,7 +34,10 @@ def _env_csv_ints(name: str, default: Iterable[int]) -> list[int]:
 @dataclass(slots=True)
 class Settings:
     app_env: str = os.getenv("APP_ENV", "development")
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./collector.db")
+    database_url: str = os.getenv(
+        "DATABASE_URL",
+        "mysql+pymysql://root@localhost/albiz_collector",
+    )
     raw_storage_dir: Path = Path(os.getenv("RAW_STORAGE_DIR", "./data/raw"))
     http_timeout_seconds: int = _env_int("HTTP_TIMEOUT_SECONDS", 30)
     http_user_agent: str = os.getenv(
@@ -70,7 +73,7 @@ class Settings:
     qkb_notices_date_to_selector: str | None = os.getenv("QKB_NOTICES_DATE_TO_SELECTOR") or None
 
     qkb_search_url: str = "https://format.qkb.gov.al/kerko-per-subjekt/"
-    qkb_search_playwright_headless: bool = _env_bool("QKB_SEARCH_PLAYWRIGHT_HEADLESS", True)
+    qkb_search_playwright_headless: bool = _env_bool("QKB_SEARCH_PLAYWRIGHT_HEADLESS", False)
     qkb_search_wait_ms: int = _env_int("QKB_SEARCH_WAIT_MS", 3000)
     qkb_search_nipt_selector: str = os.getenv("QKB_SEARCH_NIPT_SELECTOR", "#nipt")
     qkb_search_date_from_selector: str = os.getenv("QKB_SEARCH_DATE_FROM_SELECTOR", "#dataNga")

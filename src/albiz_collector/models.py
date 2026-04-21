@@ -131,3 +131,87 @@ class NormalizedQkbSearchRow(Base):
     administrators_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     has_red_flags: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     source_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class AppCompanyFeature(Base):
+    __tablename__ = "app_company_features"
+    __table_args__ = (
+        UniqueConstraint("company_nipt", name="uq_app_company_feature_company_nipt"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_nipt: Mapped[str] = mapped_column(String(64), index=True)
+    materialized_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+    source_row_count: Mapped[int] = mapped_column(Integer)
+    source_snapshot_count: Mapped[int] = mapped_column(Integer)
+    source_structured_record_ids: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
+    latest_winner_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    first_procurement_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    last_procurement_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    total_budget_limit_amount: Mapped[float | None] = mapped_column(Numeric(18, 2), nullable=True)
+    total_winner_value_amount: Mapped[float | None] = mapped_column(Numeric(18, 2), nullable=True)
+    cancelled_procurement_count: Mapped[int] = mapped_column(Integer)
+    suspended_procurement_count: Mapped[int] = mapped_column(Integer)
+    distinct_contracting_authority_count: Mapped[int] = mapped_column(Integer)
+    distinct_procedure_type_count: Mapped[int] = mapped_column(Integer)
+    distinct_contract_type_count: Mapped[int] = mapped_column(Integer)
+    has_small_value_procedures: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_open_local_procedures: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class QkbCompanyFeature(Base):
+    __tablename__ = "qkb_company_features"
+    __table_args__ = (
+        UniqueConstraint("company_nipt", name="uq_qkb_company_feature_company_nipt"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_nipt: Mapped[str] = mapped_column(String(64), index=True)
+    materialized_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+    source_row_count: Mapped[int] = mapped_column(Integer)
+    source_snapshot_count: Mapped[int] = mapped_column(Integer)
+    source_structured_record_ids: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
+    business_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trade_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    legal_form: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject_status: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    registration_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    registration_year: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    city: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    has_red_flags: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    has_activity_text: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_ownership_text: Mapped[bool] = mapped_column(Boolean, default=False)
+    search_window_start: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    search_window_end: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+
+
+class JoinedCompanyFeature(Base):
+    __tablename__ = "joined_company_features"
+    __table_args__ = (
+        UniqueConstraint("company_nipt", name="uq_joined_company_feature_company_nipt"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_nipt: Mapped[str] = mapped_column(String(64), index=True)
+    materialized_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+    app_source_row_count: Mapped[int] = mapped_column(Integer)
+    app_source_snapshot_count: Mapped[int] = mapped_column(Integer)
+    app_structured_record_ids: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
+    qkb_source_row_count: Mapped[int] = mapped_column(Integer)
+    qkb_source_snapshot_count: Mapped[int] = mapped_column(Integer)
+    qkb_structured_record_ids: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
+    exact_join_match: Mapped[bool] = mapped_column(Boolean, default=True)
+    business_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    legal_form: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject_status: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    registration_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    first_procurement_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    last_procurement_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    company_age_days_at_first_procurement: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    company_age_days_at_last_procurement: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_budget_limit_amount: Mapped[float | None] = mapped_column(Numeric(18, 2), nullable=True)
+    total_winner_value_amount: Mapped[float | None] = mapped_column(Numeric(18, 2), nullable=True)
+    cancelled_procurement_count: Mapped[int] = mapped_column(Integer)
+    suspended_procurement_count: Mapped[int] = mapped_column(Integer)
+    has_red_flags: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

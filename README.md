@@ -67,6 +67,8 @@ Copy-Item .env.example .env  # PowerShell
 
 `requirements.txt` installs the package in editable mode and pulls runtime dependencies from `pyproject.toml`.
 
+The default database URL is now MySQL via `PyMySQL`. Override `DATABASE_URL` in `.env` if you need a different MySQL user, password, host, or database name.
+
 Initialize the database:
 
 ```bash
@@ -138,6 +140,29 @@ python -m albiz_collector.cli normalize qkb-search
 python -m albiz_collector.cli normalize all
 ```
 
+Normalization reruns are safe: the commands replace normalized rows for the same source snapshot instead of accumulating duplicates.
+
+Materialize baseline analytical features:
+
+```bash
+python -m albiz_collector.cli features app
+python -m albiz_collector.cli features qkb
+python -m albiz_collector.cli features joined
+python -m albiz_collector.cli features all
+```
+
+Feature reruns are safe: the commands replace the current feature tables and rebuild them from normalized data.
+
+Profile normalized and feature datasets:
+
+```bash
+python -m albiz_collector.cli profile normalized
+python -m albiz_collector.cli profile features
+python -m albiz_collector.cli profile all
+```
+
+The profiling commands are read-only and report row counts, missingness, exact-join coverage, feature sparsity, and a small analytical-readiness summary for the current local dataset.
+
 Start the scheduler:
 
 ```bash
@@ -175,6 +200,29 @@ Materialized APP procurement rows with provenance back to structured snapshots a
 
 ### `normalized_qkb_search_rows`
 Materialized QKB subject-search results with provenance back to structured snapshots and raw search pages.
+
+### `app_company_features`
+Baseline company-level APP aggregates built only from normalized APP rows with exact winner NIPT.
+
+### `qkb_company_features`
+Baseline company-level QKB registry features built only from normalized QKB rows with exact business NIPT.
+
+### `joined_company_features`
+Baseline exact-match APP to QKB company features built only where APP `winner_nipt == business_nipt`.
+
+## Research Dataset Design
+
+Current research-ready interpretation:
+- `normalized_app_export_rows` is the procurement-event dataset.
+- `normalized_qkb_search_rows` is the business-registry dataset.
+- the safest automated APP to QKB join is exact `winner_nipt -> business_nipt` only.
+- rows without exact business identifiers should remain in separate source datasets rather than being force-joined.
+
+See [docs/research_dataset_design.md](docs/research_dataset_design.md) for field classifications, join policy, and later feature candidates.
+
+See [docs/feature_layer_design.md](docs/feature_layer_design.md) for the baseline feature tables, confidence boundaries, and feature materialization commands.
+
+See [docs/data_profiling_readiness.md](docs/data_profiling_readiness.md) for profiling commands and the analytical-readiness summary structure.
 
 ## Notes on QKB pages
 

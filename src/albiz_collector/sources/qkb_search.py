@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 class QkbSearchCollector(CollectorBase):
     source_name = "qkb_search"
 
+    @staticmethod
+    def _format_form_date(value: date | None) -> str:
+        if value is None:
+            return ""
+        return value.strftime("%d/%m/%Y")
+
     def collect(
         self,
         db: Session,
@@ -68,6 +74,7 @@ class QkbSearchCollector(CollectorBase):
         db.commit()
 
         page_text = html.decode("utf-8", errors="replace")
+        
         try:
             parsed_response = self._extract_response_from_page(page_text)
         except Exception as exc:
@@ -127,8 +134,8 @@ class QkbSearchCollector(CollectorBase):
             "emriTregtar": "",
             "formeLigjore": "",
             "pronesia": "",
-            "dataNga": data_nga.isoformat() if data_nga else "",
-            "dataNe": data_ne.isoformat() if data_ne else "",
+            "dataNga": self._format_form_date(data_nga),
+            "dataNe": self._format_form_date(data_ne),
             "numriId": "",
             "administrator": "",
             "aksionerOrtak": "",
@@ -195,6 +202,7 @@ class QkbSearchCollector(CollectorBase):
                 decoded_payload = self._decode_json_parse_payload(escaped_payload)
                 return json.loads(decoded_payload)
 
+
         direct_match = re.search(
             r"response\s*=\s*(?P<payload>\{[\s\S]*?\}|\[[\s\S]*?\])\s*;",
             page_content,
@@ -204,6 +212,8 @@ class QkbSearchCollector(CollectorBase):
             return json.loads(direct_match.group("payload"))
 
         raise ValueError("Could not find JavaScript response variable in QKB search HTML")
+
+
 
     @staticmethod
     def _decode_json_parse_payload(payload: str) -> str:
@@ -224,7 +234,7 @@ class QkbSearchCollector(CollectorBase):
             raise RuntimeError("Playwright is required for QKB search browser collection") from exc
 
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=settings.qkb_search_playwright_headless)
+            browser = pw.chromium.launch(headless=False)
             page = browser.new_page()
             page.goto(settings.qkb_search_url, wait_until="networkidle")
 
@@ -236,13 +246,17 @@ class QkbSearchCollector(CollectorBase):
 
             try:
                 if data_nga:
-                    page.locator(settings.qkb_search_date_from_selector).fill(data_nga.isoformat())
+                    page.locator(settings.qkb_search_date_from_selector).fill(
+                        self._format_form_date(data_nga)
+                    )
             except Exception:
                 logger.warning("Could not fill dataNga field")
 
             try:
                 if data_ne:
-                    page.locator(settings.qkb_search_date_to_selector).fill(data_ne.isoformat())
+                    page.locator(settings.qkb_search_date_to_selector).fill(
+                        self._format_form_date(data_ne)
+                    )
             except Exception:
                 logger.warning("Could not fill dataNe field")
 

@@ -26,6 +26,21 @@ python -m albiz_collector.cli run qkb-search --nipt M21528028T --playwright
 python -m albiz_collector.cli normalize app-exports
 python -m albiz_collector.cli normalize qkb-search
 python -m albiz_collector.cli normalize all
+# rerun-safe: repeated normalization replaces rows for the same snapshot rather than duplicating them
+python -m albiz_collector.cli normalize all
+
+# dataset semantics and thesis-oriented join policy are documented in docs/research_dataset_design.md
+
+# baseline analytical features built on top of normalized APP and QKB datasets
+python -m albiz_collector.cli features app
+python -m albiz_collector.cli features qkb
+python -m albiz_collector.cli features joined
+python -m albiz_collector.cli features all
+
+# read-only profiling for analytical readiness, missingness, and exact-join coverage
+python -m albiz_collector.cli profile normalized
+python -m albiz_collector.cli profile features
+python -m albiz_collector.cli profile all
 
 # local recurring automation: app_exports always, qkb_search by default, qkb_notices only if explicitly enabled in env
 python -m albiz_collector.cli scheduler
