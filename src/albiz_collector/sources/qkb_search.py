@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..utils.http import HttpClient
+from ..utils.time import utc_now_naive
 from .base import CollectorBase
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class QkbSearchCollector(CollectorBase):
                 "content_type": content_type,
                 "response": parsed_response,
             },
-            published_at=datetime.utcnow(),
+            published_at=utc_now_naive(),
         )
         db.commit()
 

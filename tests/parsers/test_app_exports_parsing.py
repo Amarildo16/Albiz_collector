@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 import unittest
 
 from albiz_collector.sources.app_exports import AppExportsCollector
 
-
-FIXTURES_DIR = Path(__file__).parent / "fixtures" / "app_exports"
+from tests.support import fixture_path
 
 
 class AppExportsParsingTests(unittest.TestCase):
@@ -14,7 +12,7 @@ class AppExportsParsingTests(unittest.TestCase):
         self.collector = AppExportsCollector()
 
     def test_parse_index_discovers_years_and_filenames(self) -> None:
-        html = (FIXTURES_DIR / "export-public-calls.html").read_bytes()
+        html = fixture_path("app_exports", "export-public-calls.html").read_bytes()
 
         parsed = self.collector._parse_index(html)
 
@@ -25,7 +23,7 @@ class AppExportsParsingTests(unittest.TestCase):
         )
 
     def test_parse_csv_preview_returns_rows(self) -> None:
-        content = (FIXTURES_DIR / "app_procurement_preview.csv").read_bytes()
+        content = fixture_path("app_exports", "app_procurement_preview.csv").read_bytes()
 
         preview = self.collector._parse_csv_preview(content)
 

@@ -6,6 +6,7 @@ What it does today:
 - Downloads APP procurement CSV exports by year.
 - Collects QKB subject-search results via a session-initializing GET followed by a form POST to the official search endpoint.
 - Captures QKB notice-category pages for exploratory document/link discovery.
+- Materializes normalized APP and QKB search datasets from stored raw/structured snapshots.
 - Stores raw fetched artifacts on disk.
 - Stores normalized metadata in SQLAlchemy models.
 - Can run on demand or on a schedule.
@@ -59,7 +60,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1  # PowerShell
 # source .venv/bin/activate   # bash/zsh
 python -m pip install -r requirements.txt
-playwright install chromium
+python -m playwright install chromium
 Copy-Item .env.example .env  # PowerShell
 # cp .env.example .env       # bash/zsh
 ```
@@ -71,6 +72,37 @@ Initialize the database:
 ```bash
 python -m albiz_collector.cli init-db
 ```
+
+`init-db` is a schema bootstrap command for local development. It creates any missing tables for the current SQLAlchemy models, but it does not apply schema migrations to an existing database.
+
+Current schema contract:
+- new local databases can be bootstrapped with `init-db`
+- existing databases are not auto-migrated when models change
+- if the schema changes, recreate the local SQLite database or apply a manual migration before re-running `init-db`
+
+Run the parser-focused test suite:
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+Run the DB-focused test suite:
+
+```bash
+python -m unittest discover -s tests/db -p "test_*.py" -v
+```
+
+Run the normalization-focused test suite:
+
+```bash
+python -m unittest discover -s tests/normalization -p "test_*.py" -v
+```
+
+Test layout:
+- parser tests live in `tests/parsers/`
+- DB tests live in `tests/db/`
+- intentional fixture files live in `tests/fixtures/`
+- runtime collector output under `data/raw/` is not part of the test suite
 
 Run APP export collection:
 
@@ -98,11 +130,25 @@ python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 202
 python -m albiz_collector.cli run qkb-search --nipt M21528028T --playwright
 ```
 
+Materialize normalized datasets:
+
+```bash
+python -m albiz_collector.cli normalize app-exports
+python -m albiz_collector.cli normalize qkb-search
+python -m albiz_collector.cli normalize all
+```
+
 Start the scheduler:
 
 ```bash
 python -m albiz_collector.cli scheduler
 ```
+
+Scheduler intent:
+- local recurring collection for the most useful baseline jobs
+- `app_exports` is scheduled by default
+- `qkb_search` is scheduled by default with a configurable rolling lookback window
+- `qkb_notices` is experimental and is not scheduled by default; enable it explicitly via environment config if you want recurring exploratory runs
 
 ## Suggested deployment
 
@@ -123,6 +169,12 @@ Stores normalized records such as:
 - exploratory notice documents and category snapshots,
 - QKB search snapshots,
 - page snapshots when the source is JS-driven and needs further tuning.
+
+### `normalized_app_export_rows`
+Materialized APP procurement rows with provenance back to structured snapshots and raw CSV fetches.
+
+### `normalized_qkb_search_rows`
+Materialized QKB subject-search results with provenance back to structured snapshots and raw search pages.
 
 ## Notes on QKB pages
 

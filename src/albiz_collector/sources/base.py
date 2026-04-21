@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..models import RawFetch, StructuredRecord
 from ..utils.hashing import sha256_bytes
 from ..utils.storage import build_storage_path, write_bytes
+from ..utils.time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class CollectorBase:
             )
         )
 
-        now = datetime.utcnow()
+        now = utc_now_naive()
         if record is None:
             record = StructuredRecord(
                 source_name=self.source_name,

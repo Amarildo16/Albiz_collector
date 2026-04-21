@@ -6,7 +6,9 @@ from typing import Annotated
 
 import typer
 
-from .db import SessionLocal, init_db
+from .config import ensure_runtime_directories
+from .db import SCHEMA_BOOTSTRAP_NOTE, SessionLocal, init_db
+from .normalization import materialize_all, materialize_app_exports, materialize_qkb_search
 from .scheduler import start_scheduler
 from .sources.app_exports import AppExportsCollector
 from .sources.qkb_notices import QkbNoticesCollector
@@ -15,18 +17,25 @@ from .utils.logging import configure_logging
 
 app = typer.Typer(add_completion=False, help="Albanian business data collector")
 run_app = typer.Typer(help="Run a collector once")
+normalize_app = typer.Typer(help="Materialize normalized datasets from stored snapshots")
 app.add_typer(run_app, name="run")
+app.add_typer(normalize_app, name="normalize")
 
 
 @app.callback()
 def main() -> None:
     configure_logging()
+    ensure_runtime_directories()
 
 
-@app.command("init-db")
+@app.command(
+    "init-db",
+    help="Create any missing tables for the current models. This bootstraps a fresh local database; it does not apply migrations.",
+)
 def init_db_command() -> None:
     init_db()
-    typer.echo("Database initialized.")
+    typer.echo("Database schema bootstrapped for current models.")
+    typer.echo(SCHEMA_BOOTSTRAP_NOTE)
 
 
 @run_app.command("app-exports")
@@ -65,6 +74,27 @@ def run_qkb_search(
             data_ne=parsed_data_ne,
             use_playwright=playwright,
         )
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@normalize_app.command("app-exports")
+def normalize_app_exports_command() -> None:
+    with SessionLocal() as db:
+        result = materialize_app_exports(db)
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@normalize_app.command("qkb-search")
+def normalize_qkb_search_command() -> None:
+    with SessionLocal() as db:
+        result = materialize_qkb_search(db)
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@normalize_app.command("all")
+def normalize_all_command() -> None:
+    with SessionLocal() as db:
+        result = materialize_all(db)
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 

@@ -4,7 +4,6 @@ import csv
 import io
 import logging
 import re
-from datetime import datetime
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -13,6 +12,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..utils.hashing import sha256_bytes
 from ..utils.http import HttpClient
+from ..utils.time import utc_now_naive
 from .base import CollectorBase
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ class AppExportsCollector(CollectorBase):
                         "preview": parsed,
                         "row_count_previewed": len(parsed),
                     },
-                    published_at=datetime.utcnow(),
+                    published_at=utc_now_naive(),
                 )
                 db.commit()
                 stats["exports_saved"] += 1

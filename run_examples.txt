@@ -1,3 +1,15 @@
+# one-time local setup
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+
+# parser-focused unit tests
+python -m unittest discover -s tests -p "test_*.py" -v
+# DB-focused unit tests
+python -m unittest discover -s tests/db -p "test_*.py" -v
+# normalization-focused unit tests
+python -m unittest discover -s tests/normalization -p "test_*.py" -v
+
+# bootstraps missing tables for the current models; not a migration runner
 python -m albiz_collector.cli init-db
 # strongest stable baseline
 python -m albiz_collector.cli run app-exports
@@ -9,4 +21,11 @@ python -m albiz_collector.cli run qkb-notices --playwright
 python -m albiz_collector.cli run qkb-search --nipt M21528028T
 python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 2026-04-17
 python -m albiz_collector.cli run qkb-search --nipt M21528028T --playwright
+
+# materialize normalized research-ready datasets from stored snapshots
+python -m albiz_collector.cli normalize app-exports
+python -m albiz_collector.cli normalize qkb-search
+python -m albiz_collector.cli normalize all
+
+# local recurring automation: app_exports always, qkb_search by default, qkb_notices only if explicitly enabled in env
 python -m albiz_collector.cli scheduler

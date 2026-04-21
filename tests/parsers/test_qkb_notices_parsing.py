@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 import unittest
 
 from albiz_collector.config import settings
 from albiz_collector.sources.qkb_notices import QkbNoticesCollector
 
-
-FIXTURES_DIR = Path(__file__).parent / "fixtures" / "qkb_notices"
+from tests.support import fixture_path
 
 
 class QkbNoticesParsingTests(unittest.TestCase):
@@ -15,7 +13,7 @@ class QkbNoticesParsingTests(unittest.TestCase):
         self.collector = QkbNoticesCollector()
 
     def test_parse_documents_extracts_absolute_links_dates_and_dedupes(self) -> None:
-        html = (FIXTURES_DIR / "category-page.html").read_bytes()
+        html = fixture_path("qkb_notices", "category-page.html").read_bytes()
 
         original = settings.qkb_notices_parse_document_links_only
         settings.qkb_notices_parse_document_links_only = True

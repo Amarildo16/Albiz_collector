@@ -78,9 +78,15 @@ class Settings:
     qkb_search_button_text: str = os.getenv("QKB_SEARCH_BUTTON_TEXT", "Kërko")
 
     scheduler_app_exports_hour: int = _env_int("SCHEDULER_APP_EXPORTS_HOUR", 5)
+    scheduler_enable_qkb_search: bool = _env_bool("SCHEDULER_ENABLE_QKB_SEARCH", True)
     scheduler_qkb_notices_interval_hours: int = _env_int("SCHEDULER_QKB_NOTICES_INTERVAL_HOURS", 6)
+    scheduler_enable_qkb_notices: bool = _env_bool("SCHEDULER_ENABLE_QKB_NOTICES", False)
     scheduler_qkb_search_hour: int = _env_int("SCHEDULER_QKB_SEARCH_HOUR", 6)
+    scheduler_qkb_search_lookback_days: int = _env_int("SCHEDULER_QKB_SEARCH_LOOKBACK_DAYS", 1)
+
+
+def ensure_runtime_directories() -> None:
+    settings.raw_storage_dir.mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()
-settings.raw_storage_dir.mkdir(parents=True, exist_ok=True)

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 import unittest
 
 from albiz_collector.sources.qkb_search import QkbSearchCollector
 
-
-FIXTURES_DIR = Path(__file__).parent / "fixtures" / "qkb_search"
+from tests.support import fixture_path
 
 
 class QkbSearchParsingTests(unittest.TestCase):
@@ -14,7 +12,9 @@ class QkbSearchParsingTests(unittest.TestCase):
         self.collector = QkbSearchCollector()
 
     def test_extract_response_from_saved_fixture(self) -> None:
-        html = (FIXTURES_DIR / "search-results-with-records.html").read_text(encoding="utf-8")
+        html = fixture_path("qkb_search", "search-results-with-records.html").read_text(
+            encoding="utf-8"
+        )
 
         parsed = self.collector._extract_response_from_page(html)
 

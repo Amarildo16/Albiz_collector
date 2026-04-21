@@ -1,0 +1,44 @@
+{
+  "nipt": "M21528028T",
+  "data_nga": "2025-04-01",
+  "data_ne": "2026-04-17",
+  "raw_fetch_id": 7,
+  "status_code": 200,
+  "content_type": "text/html; charset=UTF-8",
+  "response": [
+    {
+      "nipti": "M21528028T",
+      "emriISubjektit": "Future Block Group",
+      "emriTregtar": "Future Block Group",
+      "sektoriIVeprimtarise": "Konsulence biznesi dhe zhvillim software-sh.",
+      "adminOrtakAksionar": "Ajsel Hila;Kadri Manaj;",
+      "formaLigjore": "SHPK",
+      "tipiISubjektit": "",
+      "statusiISubjektit": "Aprovuar",
+      "dataERegjistrimit": "28/03/2022",
+      "qyteti": "Tirane",
+      "shtetesia": "Shqiptare (100%)",
+      "rppRedFlagText": "",
+      "bilanciRedFlagText": "",
+      "adminRedFlagText": "",
+      "showRedFlag": false
+    },
+    {
+      "nipti": "L12345678A",
+      "emriISubjektit": "Subjekt Test",
+      "emriTregtar": "",
+      "sektoriIVeprimtarise": "Sherbime konsulence.",
+      "adminOrtakAksionar": "Person Test;",
+      "formaLigjore": "Person Fizik",
+      "tipiISubjektit": "",
+      "statusiISubjektit": "Aktiv",
+      "dataERegjistrimit": "01/02/2024",
+      "qyteti": "Durres",
+      "shtetesia": "Shqiptare (100%)",
+      "rppRedFlagText": "",
+      "bilanciRedFlagText": "",
+      "adminRedFlagText": "",
+      "showRedFlag": false
+    }
+  ]
+}

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 from ..config import settings
+from .time import utc_now
 
 
 def build_storage_path(source_name: str, suffix: str, filename: str) -> Path:
-    now = datetime.utcnow()
+    now = utc_now()
     directory = (
         settings.raw_storage_dir
         / source_name
