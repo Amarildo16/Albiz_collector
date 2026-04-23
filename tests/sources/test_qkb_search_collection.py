@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import unittest
 from datetime import date
 
@@ -20,6 +21,9 @@ from albiz_collector.utils.http import ResponsePayload
 from tests.support import isolated_db_environment
 
 
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
 def _build_html(records: list[dict[str, str]]) -> bytes:
     payload = json.dumps(records, ensure_ascii=False)
     return f"<html><body><script>var response = {payload};</script></body></html>".encode("utf-8")
@@ -36,6 +40,10 @@ def _window_key(
     data_ne: str = "",
 ) -> tuple[str, str, str]:
     return (nipt or "", data_nga, data_ne)
+
+
+def _strip_ansi(text: str) -> str:
+    return ANSI_ESCAPE_RE.sub("", text)
 
 
 class _FakeHttpClient:
@@ -115,13 +123,14 @@ class QkbSearchCollectionTests(unittest.TestCase):
         runner = CliRunner()
 
         result = runner.invoke(app, ["run", "qkb-search", "--help"])
+        clean_stdout = _strip_ansi(result.stdout)
 
         self.assertEqual(result.exit_code, 0)
-        self.assertNotIn("--playwright", result.stdout)
-        self.assertIn("--restart", result.stdout)
-        self.assertIn("--nipt", result.stdout)
-        self.assertIn("--data-nga", result.stdout)
-        self.assertIn("--data-ne", result.stdout)
+        self.assertNotIn("--playwright", clean_stdout)
+        self.assertIn("--restart", clean_stdout)
+        self.assertIn("--nipt", clean_stdout)
+        self.assertIn("--data-nga", clean_stdout)
+        self.assertIn("--data-ne", clean_stdout)
 
     def test_date_range_search_creates_new_resumable_run_and_chunks_inclusive_days(self) -> None:
         http = _FakeHttpClient(

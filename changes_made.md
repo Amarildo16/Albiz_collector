@@ -57,3 +57,17 @@
 - `.venv\Scripts\python.exe -m unittest tests.parsers.test_qkb_search_parsing tests.normalization.test_qkb_search_normalization -v` -> `8/8` passed
 - `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v` -> `61/61` passed
 - `$env:RUN_MYSQL_INTEGRATION_TESTS='1'; .venv\Scripts\python.exe -m unittest discover -s tests\integration -p "*_integration.py" -v` -> `3/3` passed
+
+---
+
+## Supplemental Pass
+
+- Timestamp: `2026-04-23 16:45:37 +02:00`
+- Change: harden `test_qkb_search_cli_help_mentions_restart_and_not_playwright` against Rich/Typer ANSI-colored help output.
+  - Files: `tests/sources/test_qkb_search_collection.py`, `changes_made.md`
+  - Reason: the CLI help output is valid, but CI renders ANSI escape sequences around option text, making plain substring assertions on raw stdout brittle.
+  - Expected impact: the test now strips ANSI escape sequences before asserting that `--restart` is present and `--playwright` is absent, without changing qkb-search runtime behavior.
+  - Commands/tests rerun:
+    - `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v`
+- Verification:
+  - `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v` -> `61/61` passed
