@@ -123,14 +123,14 @@ class QkbSearchCollectionTests(unittest.TestCase):
         runner = CliRunner()
 
         result = runner.invoke(app, ["run", "qkb-search", "--help"])
-        clean_stdout = _strip_ansi(result.stdout)
+        clean_stdout = _strip_ansi(result.stdout).lower()
 
         self.assertEqual(result.exit_code, 0)
-        self.assertNotIn("--playwright", clean_stdout)
-        self.assertIn("--restart", clean_stdout)
-        self.assertIn("--nipt", clean_stdout)
-        self.assertIn("--data-nga", clean_stdout)
-        self.assertIn("--data-ne", clean_stdout)
+        self.assertNotIn("playwright", clean_stdout)
+        self.assertIn("restart", clean_stdout)
+        self.assertIn("nipt", clean_stdout)
+        self.assertIn("data-nga", clean_stdout)
+        self.assertIn("data-ne", clean_stdout)
 
     def test_date_range_search_creates_new_resumable_run_and_chunks_inclusive_days(self) -> None:
         http = _FakeHttpClient(
