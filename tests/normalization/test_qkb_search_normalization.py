@@ -183,6 +183,52 @@ class QkbSearchNormalizationTests(unittest.TestCase):
             self.assertEqual(normalized_rows, [])
             self.assertIn("raw fetch 999999 not found", stats["errors"][0]["error"])
 
+    def test_materialize_qkb_search_skips_corrupted_raw_fetches(self) -> None:
+        payload = json.loads(
+            fixture_path("normalization", "qkb_search_snapshot_payload.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            with session_factory() as db:
+                raw_fetch = RawFetch(
+                    source_name="qkb_search",
+                    source_url="https://format.qkb.gov.al/kerko-per-subjekt/",
+                    fetch_kind="search_results_page",
+                    status_code=200,
+                    content_type="text/html",
+                    content_hash="raw-hash",
+                    storage_path="tests/fixtures/qkb_search/search-results-with-records.html",
+                    is_corrupted=True,
+                    corruption_reason="content_hash mismatch",
+                )
+                db.add(raw_fetch)
+                db.flush()
+                db.add(
+                    StructuredRecord(
+                        source_name="qkb_search",
+                        record_type="qkb_search_snapshot",
+                        external_key="M21528028T|2025-04-01|2026-04-17",
+                        title="QKB search snapshot M21528028T|2025-04-01|2026-04-17",
+                        source_url="https://format.qkb.gov.al/kerko-per-subjekt/",
+                        content_hash="snapshot-hash",
+                        payload={**payload, "raw_fetch_id": raw_fetch.id},
+                    )
+                )
+                db.commit()
+
+                stats = materialize_qkb_search(db)
+                normalized_rows = db.scalars(select(NormalizedQkbSearchRow)).all()
+
+            self.assertEqual(stats["snapshots_materialized"], 0)
+            self.assertEqual(stats["snapshots_failed"], 0)
+            self.assertEqual(stats["snapshots_skipped_corrupted"], 1)
+            self.assertEqual(normalized_rows, [])
+            self.assertIn("marked corrupted: content_hash mismatch", stats["skipped"][0]["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

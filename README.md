@@ -27,7 +27,7 @@ This project is intentionally designed as a safe first version:
 
 - `app_exports` is the strongest stable baseline in the repo.
 - `qkb_search` is the primary QKB path and is the QKB collector to harden further.
-- `qkb_notices` remains experimental and is best treated as exploratory snapshot/link discovery, not a stable ingestion pipeline.
+- `qkb_notices_experimental` remains experimental and is best treated as exploratory snapshot/link discovery, not a stable ingestion pipeline.
 
 ## Sources included
 
@@ -60,7 +60,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1  # PowerShell
 # source .venv/bin/activate   # bash/zsh
 python -m pip install -r requirements.txt
-python -m playwright install chromium
+python -m playwright install chromium  # Only needed for experimental qkb-notices browser-assisted runs
 Copy-Item .env.example .env  # PowerShell
 # cp .env.example .env       # bash/zsh
 ```
@@ -69,40 +69,78 @@ Copy-Item .env.example .env  # PowerShell
 
 The default database URL is now MySQL via `PyMySQL`. Override `DATABASE_URL` in `.env` if you need a different MySQL user, password, host, or database name.
 
-Initialize the database:
+Live HTTP collector runs use `httpx` with environment-derived proxy settings enabled. If `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, or related variables point to a dead proxy, collector requests will fail until those variables are corrected or unset.
+
+Run schema migrations:
+
+```bash
+alembic upgrade head
+```
+
+Alembic uses the same `DATABASE_URL` loaded by the project itself from `.env` / environment variables. The SQLAlchemy models remain the source of truth for future `--autogenerate` revisions.
+
+Existing database adoption:
+- if your database already matches the current schema, run `alembic stamp head` once
+- `stamp head` records the baseline revision in Alembic's version table without recreating application tables
+- do not run `alembic upgrade head` against an already-populated pre-migration database unless it is actually behind the recorded revision history
+
+Create a new migration after model changes:
+
+```bash
+alembic revision --autogenerate -m "describe schema change"
+alembic upgrade head
+```
+
+The Alembic env is configured to reject empty autogenerate revisions. If no schema changes are detected, no revision file is created.
+
+Legacy bootstrap command:
 
 ```bash
 python -m albiz_collector.cli init-db
 ```
 
-`init-db` is a schema bootstrap command for local development. It creates any missing tables for the current SQLAlchemy models, but it does not apply schema migrations to an existing database.
+`init-db` is still available as a lightweight local bootstrap command, but Alembic is now the supported path for managed schema changes.
 
 Current schema contract:
-- new local databases can be bootstrapped with `init-db`
-- existing databases are not auto-migrated when models change
-- if the schema changes, recreate the local SQLite database or apply a manual migration before re-running `init-db`
+- fresh databases should use `alembic upgrade head`
+- existing databases that already match the current models should use `alembic stamp head`
+- future schema changes should be applied through Alembic revisions, not manual DB recreation
 
-Run the parser-focused test suite:
+Run the fast default unit suite:
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Run the DB-focused test suite:
+Run the DB-focused unit suite:
 
 ```bash
 python -m unittest discover -s tests/db -p "test_*.py" -v
 ```
 
-Run the normalization-focused test suite:
+Run the normalization-focused unit suite:
 
 ```bash
 python -m unittest discover -s tests/normalization -p "test_*.py" -v
 ```
 
+Run the opt-in MySQL integration suite:
+
+```bash
+$env:RUN_MYSQL_INTEGRATION_TESTS="1"  # PowerShell
+python -m unittest discover -s tests/integration -p "*_integration.py" -v
+```
+
+Optional MySQL admin URL override for integration tests:
+- `MYSQL_INTEGRATION_ADMIN_URL=mysql+pymysql://root:password@127.0.0.1:3306/mysql`
+
 Test layout:
 - parser tests live in `tests/parsers/`
 - DB tests live in `tests/db/`
+- scheduler tests live in `tests/scheduler/`
+- smoke-check evaluation tests live in `tests/smoke/`
+- source-collector tests live in `tests/sources/`
+- integration tests live in `tests/integration/` and are opt-in
 - intentional fixture files live in `tests/fixtures/`
 - runtime collector output under `data/raw/` is not part of the test suite
 
@@ -115,13 +153,13 @@ python -m albiz_collector.cli run app-exports
 Run QKB notices collection without browser automation (experimental snapshot mode):
 
 ```bash
-python -m albiz_collector.cli run qkb-notices
+python -m albiz_collector.cli experimental qkb-notices
 ```
 
 Run QKB notices with Playwright (experimental browser-assisted snapshot mode):
 
 ```bash
-python -m albiz_collector.cli run qkb-notices --playwright
+python -m albiz_collector.cli experimental qkb-notices --playwright
 ```
 
 Run QKB subject search (primary QKB path):
@@ -129,8 +167,27 @@ Run QKB subject search (primary QKB path):
 ```bash
 python -m albiz_collector.cli run qkb-search --nipt M21528028T
 python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 2026-04-17
-python -m albiz_collector.cli run qkb-search --nipt M21528028T --playwright
+python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 2026-04-17 --restart
 ```
+
+QKB search is intentionally HTTP-only.
+
+For date-range searches without `--nipt`, the collector does not submit the full range in one request. It executes one inclusive one-day search per day in the requested window:
+- `2026-04-01` through `2026-04-03` becomes three searches:
+- `2026-04-01 -> 2026-04-01`
+- `2026-04-02 -> 2026-04-02`
+- `2026-04-03 -> 2026-04-03`
+
+Exact `--nipt` searches keep the single-request behavior even when both dates are provided.
+
+QKB returns at most `50` rows per search. If any one-day search returns exactly `50` rows, the collector reports that day in `potentially_truncated_days` so it is not silently treated as complete.
+
+QKB date-range runs are now resumable and their progress is stored in the database:
+- the collector creates a persisted run row for each date-range invocation
+- `current_date` tracks the next unfinished day
+- if the same unfinished date range is run again, it resumes from that saved day instead of restarting from the beginning
+- completed runs are not resumed again; rerunning the same completed range starts a new run
+- `--restart` forces a fresh run from `date_from` and interrupts any unfinished saved run for the same range
 
 Materialize normalized datasets:
 
@@ -163,6 +220,59 @@ python -m albiz_collector.cli profile all
 
 The profiling commands are read-only and report row counts, missingness, exact-join coverage, feature sparsity, and a small analytical-readiness summary for the current local dataset.
 
+Audit persisted raw fetch integrity:
+
+```bash
+python -m albiz_collector.cli audit raw-fetches
+python -m albiz_collector.cli audit raw-fetches --source-name qkb_search --limit 25
+python -m albiz_collector.cli audit raw-fetches --mark-corrupted
+python -m albiz_collector.cli audit raw-fetches --corrupted-only
+```
+
+The audit command reports raw fetch rows whose persisted `content_hash` no longer matches on-disk content and rows whose files are missing.
+
+When you add `--mark-corrupted`, the command does not rewrite files, hashes, or raw artifacts. It only marks affected `raw_fetches` rows with:
+- `is_corrupted = true`
+- `corruption_reason = ...`
+
+Downstream normalization, feature materialization, and normalized-data profiling ignore quarantined raw fetches. After quarantining rows in an existing database, rebuild the derived layers that should reflect the trusted subset:
+
+```bash
+python -m albiz_collector.cli features all
+python -m albiz_collector.cli profile all
+```
+
+Rerun `normalize all` as well when you need refreshed normalization stats from the currently trusted snapshots.
+
+Inspect persisted qkb-search resumable run state:
+
+```bash
+python -m albiz_collector.cli audit qkb-search-runs
+python -m albiz_collector.cli audit qkb-search-runs --status failed
+python -m albiz_collector.cli audit qkb-search-runs --limit 25
+```
+
+This audit view lists saved qkb-search date-range runs, including:
+- requested date window
+- next unfinished `current_date`
+- run status
+- timestamps
+- last saved error
+
+Run opt-in live source-contract smoke checks for the supported production collectors:
+
+```bash
+python -m albiz_collector.cli smoke app
+python -m albiz_collector.cli smoke qkb-search
+python -m albiz_collector.cli smoke all
+```
+
+These smoke checks are intentionally manual and low-volume. They only touch:
+- the APP export index page
+- the QKB search page
+
+If stale proxy variables are set in your shell, unset them first or the smoke checks will fail for connectivity reasons rather than source-contract drift.
+
 Start the scheduler:
 
 ```bash
@@ -173,7 +283,9 @@ Scheduler intent:
 - local recurring collection for the most useful baseline jobs
 - `app_exports` is scheduled by default
 - `qkb_search` is scheduled by default with a configurable rolling lookback window
-- `qkb_notices` is experimental and is not scheduled by default; enable it explicitly via environment config if you want recurring exploratory runs
+- experimental collectors are not scheduled automatically
+
+See [docs/deployment_and_migration_runbook.md](docs/deployment_and_migration_runbook.md) for the operational runbook covering fresh DB setup, existing DB adoption, migrations, smoke checks, integration tests, maintenance commands, and the supported production flow.
 
 ## Suggested deployment
 
@@ -226,14 +338,16 @@ See [docs/data_profiling_readiness.md](docs/data_profiling_readiness.md) for pro
 
 ## Notes on QKB pages
 
-The live QKB pages appear to be JS-driven / componentized. This repo therefore includes two collection modes where needed:
-- **simple HTTP mode**: fetch + snapshot + basic anchor parsing,
-- **Playwright mode**: open the page in Chromium, click the visible search button, then parse the post-render DOM.
+The supported QKB search collector is intentionally HTTP-only. It uses the official search page by first performing a GET request to establish session cookies and then POSTing the form-urlencoded search payload back to the same endpoint. The returned HTML is persisted raw and the JavaScript `response` variable is decoded into a structured snapshot.
 
-The QKB subject-search collector uses the official search page by first performing a GET request to establish session cookies and then POSTing the form-urlencoded search payload back to the same endpoint. The returned HTML is persisted raw and the JavaScript `response` variable is decoded into a structured snapshot.
+For date-range searches without `--nipt`, the collector applies inclusive one-day chunking, emits one persisted snapshot per day, and stores resumable run state in the database. This keeps persistence keys coherent, avoids overlapping multi-day snapshots, makes capped `50`-row days visible in the run summary, and allows the same unfinished range to resume from the next unfinished day.
 
-QKB search dates are accepted on the CLI as `YYYY-MM-DD` and are sent to both HTTP and Playwright flows in the same `YYYY-MM-DD` format.
+The only remaining Playwright path in the repo is the experimental notices collector.
 
-The QKB notices collector is intentionally kept in the repo as an experimental collector. It preserves raw pages and extracts likely document links, but its output should be treated as exploratory rather than authoritative.
+If you run collectors from a shell with proxy variables set, those requests will honor the proxy environment by default. For local direct-connect runs, unset stale proxy variables before collecting.
+
+QKB search dates are accepted on the CLI as `YYYY-MM-DD` and are converted to the page's `DD/MM/YYYY` form format for the HTTP requests the collector sends.
+
+The QKB notices collector is intentionally kept in the repo as `qkb_notices_experimental`. It is exposed only through the `experimental` CLI group, is excluded from automated scheduler flows, preserves raw pages, and extracts likely document links. Its output should be treated as exploratory rather than authoritative.
 
 If QKB changes selectors, update `config.py` or the collector methods rather than hard-coding brittle selectors in multiple places.

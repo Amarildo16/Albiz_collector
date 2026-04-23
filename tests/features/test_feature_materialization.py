@@ -19,6 +19,7 @@ from albiz_collector.models import (
     NormalizedAppExportRow,
     NormalizedQkbSearchRow,
     QkbCompanyFeature,
+    RawFetch,
     StructuredRecord,
 )
 from tests.support import isolated_db_environment
@@ -390,6 +391,166 @@ class FeatureMaterializationTests(unittest.TestCase):
             self.assertEqual(len(app_features), 1)
             self.assertEqual(len(qkb_features), 1)
             self.assertEqual(len(joined_features), 1)
+
+    def test_feature_materialization_ignores_rows_from_corrupted_raw_fetches(self) -> None:
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            with session_factory() as db:
+                db.add_all(
+                    [
+                        StructuredRecord(
+                            id=40,
+                            source_name="app_exports",
+                            record_type="procurement_export_year",
+                            external_key="2026",
+                            content_hash="hash-app",
+                        ),
+                        StructuredRecord(
+                            id=41,
+                            source_name="qkb_search",
+                            record_type="qkb_search_snapshot",
+                            external_key="M21528028T|2025-01-01|2026-04-17",
+                            content_hash="hash-qkb",
+                        ),
+                        RawFetch(
+                            id=100,
+                            source_name="app_exports",
+                            source_url="https://example.test/app.csv",
+                            fetch_kind="year_export",
+                            status_code=200,
+                            content_type="text/csv",
+                            content_hash="healthy-app",
+                            storage_path="tests/fixtures/normalization/app_procurement_rows.csv",
+                            is_corrupted=False,
+                        ),
+                        RawFetch(
+                            id=101,
+                            source_name="app_exports",
+                            source_url="https://example.test/app-corrupt.csv",
+                            fetch_kind="year_export",
+                            status_code=200,
+                            content_type="text/csv",
+                            content_hash="corrupt-app",
+                            storage_path="tests/fixtures/normalization/app_procurement_rows.csv",
+                            is_corrupted=True,
+                            corruption_reason="content_hash mismatch",
+                        ),
+                        RawFetch(
+                            id=102,
+                            source_name="qkb_search",
+                            source_url="https://example.test/qkb.html",
+                            fetch_kind="search_results_page",
+                            status_code=200,
+                            content_type="text/html",
+                            content_hash="healthy-qkb",
+                            storage_path="tests/fixtures/qkb_search/search-results-with-records.html",
+                            is_corrupted=False,
+                        ),
+                        RawFetch(
+                            id=103,
+                            source_name="qkb_search",
+                            source_url="https://example.test/qkb-corrupt.html",
+                            fetch_kind="search_results_page",
+                            status_code=200,
+                            content_type="text/html",
+                            content_hash="corrupt-qkb",
+                            storage_path="tests/fixtures/qkb_search/search-results-with-records.html",
+                            is_corrupted=True,
+                            corruption_reason="content_hash mismatch",
+                        ),
+                    ]
+                )
+                db.flush()
+                db.add_all(
+                    [
+                        NormalizedAppExportRow(
+                            structured_record_id=40,
+                            raw_fetch_id=100,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=1,
+                            procurement_reference="REF-30",
+                            contracting_authority="Authority A",
+                            procedure_type="Small Value",
+                            contract_type="Services",
+                            publication_date=date(2026, 4, 3),
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=1000,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=900,
+                        ),
+                        NormalizedAppExportRow(
+                            structured_record_id=40,
+                            raw_fetch_id=101,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=2,
+                            procurement_reference="REF-31",
+                            contracting_authority="Authority A",
+                            procedure_type="Open Local",
+                            contract_type="Services",
+                            publication_date=date(2026, 4, 4),
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=1100,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=950,
+                        ),
+                        NormalizedQkbSearchRow(
+                            structured_record_id=41,
+                            raw_fetch_id=102,
+                            snapshot_external_key="M21528028T|2025-01-01|2026-04-17",
+                            source_name="qkb_search",
+                            result_ordinal=1,
+                            search_nipt="M21528028T",
+                            search_date_from=date(2025, 1, 1),
+                            search_date_to=date(2026, 4, 17),
+                            business_nipt="M21528028T",
+                            business_name="Future Block Group",
+                            legal_form="SHPK",
+                            registration_date=date(2022, 3, 28),
+                            city="Tirane",
+                            subject_status="Aprovuar",
+                            has_red_flags=False,
+                        ),
+                        NormalizedQkbSearchRow(
+                            structured_record_id=41,
+                            raw_fetch_id=103,
+                            snapshot_external_key="M21528028T|2025-01-01|2026-04-17",
+                            source_name="qkb_search",
+                            result_ordinal=2,
+                            search_nipt="M21528028T",
+                            search_date_from=date(2025, 1, 1),
+                            search_date_to=date(2026, 4, 17),
+                            business_nipt="M21528028T",
+                            business_name="Future Block Group Corrupted",
+                            legal_form="SHPK",
+                            registration_date=date(2022, 3, 28),
+                            city="Tirane",
+                            subject_status="Aprovuar",
+                            has_red_flags=True,
+                        ),
+                    ]
+                )
+                db.commit()
+
+                stats = materialize_all_features(db)
+                app_features = db.scalars(select(AppCompanyFeature)).all()
+                qkb_features = db.scalars(select(QkbCompanyFeature)).all()
+                joined_features = db.scalars(select(JoinedCompanyFeature)).all()
+
+            self.assertEqual(stats["app"]["source_rows_seen"], 1)
+            self.assertEqual(stats["qkb"]["source_rows_seen"], 1)
+            self.assertEqual(app_features[0].source_row_count, 1)
+            self.assertEqual(qkb_features[0].source_row_count, 1)
+            self.assertEqual(len(joined_features), 1)
+            self.assertFalse(joined_features[0].has_red_flags)
 
     def test_feature_registry_exposes_confidence_boundaries(self) -> None:
         registry = get_feature_registry()

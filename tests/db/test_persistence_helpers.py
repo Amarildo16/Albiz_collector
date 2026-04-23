@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -48,6 +49,36 @@ class PersistenceHelperTests(unittest.TestCase):
             self.assertIsNotNone(persisted_row)
             assert persisted_row is not None
             self.assertEqual(persisted_row.content_hash, raw_row.content_hash)
+
+    def test_save_raw_fetch_uses_distinct_paths_for_different_content_with_same_filename(self) -> None:
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            with session_factory() as db:
+                first = self.collector.save_raw_fetch(
+                    db,
+                    url="https://example.test/detail.html",
+                    content=b"<html>first</html>",
+                    fetch_kind="unit_test",
+                    status_code=200,
+                    content_type="text/html",
+                    filename="detail.html",
+                )
+                second = self.collector.save_raw_fetch(
+                    db,
+                    url="https://example.test/detail.html",
+                    content=b"<html>second</html>",
+                    fetch_kind="unit_test",
+                    status_code=200,
+                    content_type="text/html",
+                    filename="detail.html",
+                )
+
+            self.assertNotEqual(first.storage_path, second.storage_path)
+            self.assertIn(first.content_hash, Path(first.storage_path).name)
+            self.assertIn(second.content_hash, Path(second.storage_path).name)
+            self.assertEqual(Path(first.storage_path).read_bytes(), b"<html>first</html>")
+            self.assertEqual(Path(second.storage_path).read_bytes(), b"<html>second</html>")
 
     def test_upsert_structured_record_updates_existing_row_in_place(self) -> None:
         with isolated_db_environment() as (_, session_factory, engine):

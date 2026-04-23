@@ -3,14 +3,14 @@ from __future__ import annotations
 import unittest
 
 from albiz_collector.config import settings
-from albiz_collector.sources.qkb_notices import QkbNoticesCollector
+from albiz_collector.sources.qkb_notices_experimental import ExperimentalQkbNoticesCollector
 
 from tests.support import fixture_path
 
 
 class QkbNoticesParsingTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.collector = QkbNoticesCollector()
+        self.collector = ExperimentalQkbNoticesCollector()
 
     def test_parse_documents_extracts_absolute_links_dates_and_dedupes(self) -> None:
         html = fixture_path("qkb_notices", "category-page.html").read_bytes()

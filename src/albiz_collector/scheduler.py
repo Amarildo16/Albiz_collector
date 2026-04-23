@@ -1,23 +1,23 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 
 from .config import settings
 from .db import SessionLocal
 from .sources.app_exports import AppExportsCollector
-from .sources.qkb_notices import QkbNoticesCollector
 from .sources.qkb_search import QkbSearchCollector
 
 logger = logging.getLogger(__name__)
+SCHEDULER_TIMEZONE = ZoneInfo("Europe/Tirane")
 
 
 def start_scheduler() -> None:
-    scheduler = BlockingScheduler(timezone="Europe/Tirane")
+    scheduler = BlockingScheduler(timezone=SCHEDULER_TIMEZONE)
     active_jobs: list[str] = []
 
     scheduler.add_job(
@@ -41,17 +41,6 @@ def start_scheduler() -> None:
             f"(lookback_days={settings.scheduler_qkb_search_lookback_days})"
         )
 
-    if settings.scheduler_enable_qkb_notices:
-        scheduler.add_job(
-            _run_qkb_notices,
-            IntervalTrigger(hours=settings.scheduler_qkb_notices_interval_hours),
-            id="qkb_notices_interval",
-            replace_existing=True,
-        )
-        active_jobs.append(
-            f"qkb_notices_interval_every_{settings.scheduler_qkb_notices_interval_hours}h"
-        )
-
     logger.info("Scheduler started with jobs: %s", ", ".join(active_jobs) or "none")
     scheduler.start()
 
@@ -62,16 +51,22 @@ def _run_app_exports() -> None:
         AppExportsCollector().collect(db)
 
 
-def _run_qkb_notices() -> None:
-    logger.info("Scheduled job: QKB notices (experimental)")
-    with SessionLocal() as db:
-        QkbNoticesCollector().collect(db, use_playwright=True)
+def _scheduler_today(now: datetime | None = None) -> date:
+    if now is None:
+        return datetime.now(SCHEDULER_TIMEZONE).date()
+    if now.tzinfo is None:
+        raise ValueError("scheduler reference time must be timezone-aware")
+    return now.astimezone(SCHEDULER_TIMEZONE).date()
 
 
-def _run_qkb_search() -> None:
+def _qkb_search_window(now: datetime | None = None) -> tuple[date, date]:
+    today = _scheduler_today(now)
+    lookback_days = max(0, settings.scheduler_qkb_search_lookback_days)
+    return today - timedelta(days=lookback_days), today
+
+
+def _run_qkb_search(now: datetime | None = None) -> None:
     logger.info("Scheduled job: QKB search")
     with SessionLocal() as db:
-        today = date.today()
-        lookback_days = max(0, settings.scheduler_qkb_search_lookback_days)
-        start_date = today - timedelta(days=lookback_days)
-        QkbSearchCollector().collect(db, data_nga=start_date, data_ne=today)
+        start_date, end_date = _qkb_search_window(now=now)
+        QkbSearchCollector().collect(db, data_nga=start_date, data_ne=end_date)

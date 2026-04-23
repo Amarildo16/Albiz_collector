@@ -8,6 +8,7 @@ from typing import Iterable
 from dotenv import load_dotenv
 
 load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -31,6 +32,14 @@ def _env_csv_ints(name: str, default: Iterable[int]) -> list[int]:
     return [int(part.strip()) for part in value.split(",") if part.strip()]
 
 
+def _env_path(name: str, default: str) -> Path:
+    value = os.getenv(name)
+    path = Path(value) if value else Path(default)
+    if path.is_absolute():
+        return path
+    return (PROJECT_ROOT / path).resolve()
+
+
 @dataclass(slots=True)
 class Settings:
     app_env: str = os.getenv("APP_ENV", "development")
@@ -38,7 +47,7 @@ class Settings:
         "DATABASE_URL",
         "mysql+pymysql://root@localhost/albiz_collector",
     )
-    raw_storage_dir: Path = Path(os.getenv("RAW_STORAGE_DIR", "./data/raw"))
+    raw_storage_dir: Path = _env_path("RAW_STORAGE_DIR", "./data/raw")
     http_timeout_seconds: int = _env_int("HTTP_TIMEOUT_SECONDS", 30)
     http_user_agent: str = os.getenv(
         "HTTP_USER_AGENT",
@@ -73,17 +82,12 @@ class Settings:
     qkb_notices_date_to_selector: str | None = os.getenv("QKB_NOTICES_DATE_TO_SELECTOR") or None
 
     qkb_search_url: str = "https://format.qkb.gov.al/kerko-per-subjekt/"
-    qkb_search_playwright_headless: bool = _env_bool("QKB_SEARCH_PLAYWRIGHT_HEADLESS", False)
-    qkb_search_wait_ms: int = _env_int("QKB_SEARCH_WAIT_MS", 3000)
     qkb_search_nipt_selector: str = os.getenv("QKB_SEARCH_NIPT_SELECTOR", "#nipt")
     qkb_search_date_from_selector: str = os.getenv("QKB_SEARCH_DATE_FROM_SELECTOR", "#dataNga")
     qkb_search_date_to_selector: str = os.getenv("QKB_SEARCH_DATE_TO_SELECTOR", "#dataNe")
-    qkb_search_button_text: str = os.getenv("QKB_SEARCH_BUTTON_TEXT", "Kërko")
 
     scheduler_app_exports_hour: int = _env_int("SCHEDULER_APP_EXPORTS_HOUR", 5)
     scheduler_enable_qkb_search: bool = _env_bool("SCHEDULER_ENABLE_QKB_SEARCH", True)
-    scheduler_qkb_notices_interval_hours: int = _env_int("SCHEDULER_QKB_NOTICES_INTERVAL_HOURS", 6)
-    scheduler_enable_qkb_notices: bool = _env_bool("SCHEDULER_ENABLE_QKB_NOTICES", False)
     scheduler_qkb_search_hour: int = _env_int("SCHEDULER_QKB_SEARCH_HOUR", 6)
     scheduler_qkb_search_lookback_days: int = _env_int("SCHEDULER_QKB_SEARCH_LOOKBACK_DAYS", 1)
 

@@ -14,6 +14,7 @@ from ..models import (
     NormalizedQkbSearchRow,
     QkbCompanyFeature,
 )
+from ..utils.raw_fetches import exclude_corrupted_raw_fetches
 
 
 def _normalize_identifier(value: str | None) -> str | None:
@@ -106,8 +107,18 @@ def _feature_table_readiness(dataset_name: str, row_count: int, high_confidence_
 
 
 def profile_normalized_data(db: Session) -> dict[str, Any]:
-    app_rows = db.scalars(select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.id)).all()
-    qkb_rows = db.scalars(select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.id)).all()
+    app_rows = db.scalars(
+        exclude_corrupted_raw_fetches(
+            select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.id),
+            NormalizedAppExportRow,
+        )
+    ).all()
+    qkb_rows = db.scalars(
+        exclude_corrupted_raw_fetches(
+            select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.id),
+            NormalizedQkbSearchRow,
+        )
+    ).all()
 
     app_winner_nipts = _distinct_identifiers(row.winner_nipt for row in app_rows)
     qkb_business_nipts = _distinct_identifiers(row.business_nipt for row in qkb_rows)

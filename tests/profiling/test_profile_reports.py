@@ -5,7 +5,7 @@ from datetime import date
 
 from albiz_collector.db import Base
 from albiz_collector.features.materialize import materialize_all_features
-from albiz_collector.models import NormalizedAppExportRow, NormalizedQkbSearchRow, StructuredRecord
+from albiz_collector.models import NormalizedAppExportRow, NormalizedQkbSearchRow, RawFetch, StructuredRecord
 from albiz_collector.profiling.report import profile_all_data, profile_feature_data, profile_normalized_data
 from tests.support import isolated_db_environment
 
@@ -226,6 +226,93 @@ class ProfileReportsTests(unittest.TestCase):
                 "Backfill QKB searches for APP winner NIPTs to increase exact join coverage.",
                 report["analytical_readiness"]["priority_backfill_actions"],
             )
+
+    def test_profile_normalized_data_ignores_rows_from_corrupted_raw_fetches(self) -> None:
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            with session_factory() as db:
+                db.add_all(
+                    [
+                        StructuredRecord(
+                            id=10,
+                            source_name="app_exports",
+                            record_type="procurement_export_year",
+                            external_key="2026",
+                            content_hash="hash-app",
+                        ),
+                        StructuredRecord(
+                            id=11,
+                            source_name="qkb_search",
+                            record_type="qkb_search_snapshot",
+                            external_key="M21528028T|2025-01-01|2026-04-17",
+                            content_hash="hash-qkb",
+                        ),
+                        RawFetch(
+                            id=200,
+                            source_name="app_exports",
+                            source_url="https://example.test/app.csv",
+                            fetch_kind="year_export",
+                            status_code=200,
+                            content_type="text/csv",
+                            content_hash="healthy-app",
+                            storage_path="tests/fixtures/normalization/app_procurement_rows.csv",
+                            is_corrupted=False,
+                        ),
+                        RawFetch(
+                            id=201,
+                            source_name="qkb_search",
+                            source_url="https://example.test/qkb.html",
+                            fetch_kind="search_results_page",
+                            status_code=200,
+                            content_type="text/html",
+                            content_hash="corrupt-qkb",
+                            storage_path="tests/fixtures/qkb_search/search-results-with-records.html",
+                            is_corrupted=True,
+                            corruption_reason="content_hash mismatch",
+                        ),
+                    ]
+                )
+                db.flush()
+                db.add_all(
+                    [
+                        NormalizedAppExportRow(
+                            structured_record_id=10,
+                            raw_fetch_id=200,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=1,
+                            procurement_reference="REF-90",
+                            publication_date=date(2026, 4, 3),
+                            procedure_type="Small Value",
+                            contract_type="Services",
+                            budget_limit_amount=1000,
+                            winner_nipt="M21528028T",
+                            winner_value_amount=900,
+                        ),
+                        NormalizedQkbSearchRow(
+                            structured_record_id=11,
+                            raw_fetch_id=201,
+                            snapshot_external_key="M21528028T|2025-01-01|2026-04-17",
+                            source_name="qkb_search",
+                            result_ordinal=1,
+                            business_nipt="M21528028T",
+                            business_name="Future Block Group",
+                            legal_form="SHPK",
+                            registration_date=date(2022, 3, 28),
+                            subject_status="Aprovuar",
+                            city="Tirane",
+                            has_red_flags=False,
+                        ),
+                    ]
+                )
+                db.commit()
+
+                report = profile_normalized_data(db)
+
+            self.assertEqual(report["row_counts"]["normalized_app_export_rows"], 1)
+            self.assertEqual(report["row_counts"]["normalized_qkb_search_rows"], 0)
 
 
 if __name__ == "__main__":

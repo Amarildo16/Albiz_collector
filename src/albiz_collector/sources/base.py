@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
@@ -33,7 +34,11 @@ class CollectorBase:
     ) -> RawFetch:
         content_hash = sha256_bytes(content)
         extension = self._guess_extension(content_type, url)
-        filename = filename or f"{content_hash}{extension}"
+        filename = self._build_storage_filename(
+            requested_filename=filename,
+            content_hash=content_hash,
+            extension=extension,
+        )
         storage_path = build_storage_path(self.source_name, fetch_kind, filename)
         write_bytes(storage_path, content)
 
@@ -112,6 +117,21 @@ class CollectorBase:
         if url.endswith(".json") or "json" in (content_type or ""):
             return ".json"
         return ".html"
+
+    @staticmethod
+    def _build_storage_filename(
+        *,
+        requested_filename: str | None,
+        content_hash: str,
+        extension: str,
+    ) -> str:
+        if requested_filename is None:
+            return f"{content_hash}{extension}"
+
+        original = Path(requested_filename)
+        suffix = original.suffix or extension
+        stem = original.stem or content_hash
+        return f"{stem}-{content_hash}{suffix}"
 
     @staticmethod
     def dump_json_bytes(payload: dict[str, Any]) -> bytes:

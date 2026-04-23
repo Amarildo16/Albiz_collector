@@ -22,6 +22,8 @@ class RawFetch(Base):
     content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     content_hash: Mapped[str] = mapped_column(String(64), index=True)
     storage_path: Mapped[str] = mapped_column(Text)
+    is_corrupted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    corruption_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     extra_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
 
@@ -52,6 +54,24 @@ class StructuredRecord(Base):
     payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+
+
+class QkbSearchRun(Base):
+    """Persistent resumable run state for qkb_search date-range execution."""
+
+    __tablename__ = "qkb_search_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    collector_name: Mapped[str] = mapped_column(String(100), index=True)
+    mode: Mapped[str] = mapped_column(String(50), index=True)
+    date_from: Mapped[date] = mapped_column(Date, index=True)
+    date_to: Mapped[date] = mapped_column(Date, index=True)
+    current_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(50), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class NormalizedAppExportRow(Base):

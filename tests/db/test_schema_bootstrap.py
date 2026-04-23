@@ -16,10 +16,20 @@ class SchemaBootstrapTests(unittest.TestCase):
             init_db()
             init_db()
 
-            table_names = set(inspect(engine).get_table_names())
+            inspector = inspect(engine)
+            table_names = set(inspector.get_table_names())
+            raw_fetch_columns = {column["name"] for column in inspector.get_columns("raw_fetches")}
+            qkb_search_run_columns = {
+                column["name"] for column in inspector.get_columns("qkb_search_runs")
+            }
 
         self.assertIn("raw_fetches", table_names)
         self.assertIn("structured_records", table_names)
+        self.assertIn("qkb_search_runs", table_names)
+        self.assertIn("is_corrupted", raw_fetch_columns)
+        self.assertIn("corruption_reason", raw_fetch_columns)
+        self.assertIn("current_date", qkb_search_run_columns)
+        self.assertIn("status", qkb_search_run_columns)
 
     def test_init_db_cli_reports_bootstrap_contract(self) -> None:
         runner = CliRunner()
@@ -30,6 +40,7 @@ class SchemaBootstrapTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Database schema bootstrapped for current models.", result.stdout)
         self.assertIn("does not apply schema migrations", result.stdout)
+        self.assertIn("Prefer Alembic", result.stdout)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,8 @@ NAMING_CONVENTION: Final[dict[str, str]] = {
 
 SCHEMA_BOOTSTRAP_NOTE: Final[str] = (
     "init_db() creates any missing tables for the current SQLAlchemy models. "
-    "It does not apply schema migrations or reconcile changes to an existing database."
+    "It does not apply schema migrations or reconcile changes to an existing database. "
+    "Prefer Alembic for managed schema changes."
 )
 
 
@@ -39,8 +40,8 @@ def init_db() -> None:
 
     This path is intentionally lightweight: it creates missing tables but does
     not attempt to migrate or reconcile an existing schema. When model changes
-    require schema evolution, update the database manually or recreate the local
-    development database before running this again.
+    require schema evolution, use Alembic migrations instead of recreating the
+    database or editing schema state manually.
     """
 
     load_model_definitions()

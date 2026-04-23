@@ -16,6 +16,7 @@ from ..models import (
     QkbCompanyFeature,
 )
 from ..semantics.research_dataset import assess_app_qkb_join
+from ..utils.raw_fetches import exclude_corrupted_raw_fetches
 from ..utils.time import utc_now_naive
 
 
@@ -218,7 +219,12 @@ def _build_joined_features(inputs: _FeatureInputs) -> tuple[list[JoinedCompanyFe
 
 
 def materialize_app_features(db: Session) -> dict[str, Any]:
-    source_rows = db.scalars(select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.id)).all()
+    source_rows = db.scalars(
+        exclude_corrupted_raw_fetches(
+            select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.id),
+            NormalizedAppExportRow,
+        )
+    ).all()
     stats = _base_stats("app_company_features", len(source_rows))
     features, skipped = _build_app_features(source_rows)
 
@@ -234,7 +240,12 @@ def materialize_app_features(db: Session) -> dict[str, Any]:
 
 
 def materialize_qkb_features(db: Session) -> dict[str, Any]:
-    source_rows = db.scalars(select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.id)).all()
+    source_rows = db.scalars(
+        exclude_corrupted_raw_fetches(
+            select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.id),
+            NormalizedQkbSearchRow,
+        )
+    ).all()
     stats = _base_stats("qkb_company_features", len(source_rows))
     features, skipped = _build_qkb_features(source_rows)
 
@@ -250,8 +261,18 @@ def materialize_qkb_features(db: Session) -> dict[str, Any]:
 
 
 def materialize_joined_features(db: Session) -> dict[str, Any]:
-    app_rows = db.scalars(select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.id)).all()
-    qkb_rows = db.scalars(select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.id)).all()
+    app_rows = db.scalars(
+        exclude_corrupted_raw_fetches(
+            select(NormalizedAppExportRow).order_by(NormalizedAppExportRow.id),
+            NormalizedAppExportRow,
+        )
+    ).all()
+    qkb_rows = db.scalars(
+        exclude_corrupted_raw_fetches(
+            select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.id),
+            NormalizedQkbSearchRow,
+        )
+    ).all()
     stats = _base_stats("joined_company_features", len(app_rows) + len(qkb_rows))
     app_features, app_skipped = _build_app_features(app_rows)
     qkb_features, qkb_skipped = _build_qkb_features(qkb_rows)

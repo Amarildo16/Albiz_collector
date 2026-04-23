@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Experimental QKB notices collector kept outside supported production workflows."""
+
 import logging
 import re
 from datetime import datetime
@@ -17,7 +19,9 @@ from .base import CollectorBase
 logger = logging.getLogger(__name__)
 
 
-class QkbNoticesCollector(CollectorBase):
+class ExperimentalQkbNoticesCollector(CollectorBase):
+    """Experimental collector not included in supported CLI or scheduler flows."""
+
     source_name = "qkb_notices"
 
     def collect(self, db: Session, use_playwright: bool = False) -> dict[str, Any]:
@@ -29,7 +33,7 @@ class QkbNoticesCollector(CollectorBase):
             effective_mode = "http"
 
         stats: dict[str, Any] = {
-            "collector_status": "experimental",
+            "collector_status": "experimental_not_for_production",
             "index_saved": False,
             "categories_processed": 0,
             "records_upserted": 0,
@@ -186,7 +190,7 @@ class QkbNoticesCollector(CollectorBase):
             browser = pw.chromium.launch(headless=settings.qkb_notices_playwright_headless)
             page = browser.new_page()
             for category, url in settings.qkb_notice_categories.items():
-                logger.info("Playwright collecting QKB category: %s", category)
+                logger.info("Experimental Playwright collecting QKB category: %s", category)
                 page.goto(url, wait_until="networkidle")
 
                 try:
