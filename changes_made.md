@@ -1,32 +1,37 @@
-# Cleanup Summary
+# Config and Environment Update Summary
 
 Date: 2026-04-24
 
 ## Summary
-- Removed generated and runtime artifacts only.
-- Confirmed no generated ignored artifacts are tracked by Git.
-- Kept `.env.example` tracked and did not create a real `.env`.
-- No application, scraper, model, migration, parser, normalization, CLI, or test logic was changed.
+- Hardened config loading so `.env` is loaded explicitly from the repository root.
+- Made relative filesystem config values deterministic from `PROJECT_ROOT`.
+- Normalized relative SQLite database file URLs from `DATABASE_URL` against `PROJECT_ROOT`.
+- Kept existing environment variable names and safe defaults.
+- Did not create a real `.env`.
 
-## Categories Removed
-- Python caches: `__pycache__/`, `*.pyc`, and `*.pyo`.
-- Build/install metadata: `src/albiz_collector.egg-info/` and `*.egg-info/`.
-- Local runtime directories: `.venv/`, `.tmp/`, and `tests/.tmp/`.
-- Runtime SQLite files: `collector.db` and verification/test SQLite databases under `.tmp/`.
-- Ignored generated raw data files under `data/raw/`; empty directory structure may remain.
+## Files Changed
+- `src/albiz_collector/config.py`
+- `.env.example`
+- `README.md`
+- `PROJECT_SETUP_AND_COMMANDS.md`
+- `tests/test_config.py`
+- `changes_made.md`
 
-## .gitignore Changes
-- Added permanent ignore coverage for `.coverage`, `htmlcov/`, `*.db`, `data/processed/`, and `data/exports/`.
-- Retained ignore coverage for `.env`, `.venv/`, `.tmp/`, `tests/.tmp/`, `.pytest_cache/`, `__pycache__/`, `*.py[cod]`, `*.pyo`, `*.pyd`, `*.egg-info/`, `collector.db`, `*.sqlite3`, and `data/raw/`.
-- Retained existing additional ignore entries for `.eggs/`, `build/`, `dist/`, and `*.sqlite`.
+## Tests Added
+- Added config tests proving:
+  - config imports without a real `.env`
+  - project-root `.env` is loaded even when the current working directory is elsewhere
+  - relative `RAW_STORAGE_DIR` and relative SQLite file URLs resolve from project root
+  - `.env.example` matches every environment variable read by `config.py`
+  - `.env.example` can be loaded as a usable dotenv file
 
-## Verification
-- `git status --short` after artifact cleanup: only `.gitignore` was modified at that point.
-- `python -m pytest`: failed before test collection because the active Python does not have pytest installed.
-- Exact pytest error: `C:\Python314\python.exe: No module named pytest`.
+## Test Result
+- Command: `python -m pytest`
+- Environment: Python `3.12.9` from the existing `.venv`
+- Result: `65 passed in 26.21s`
 
 ## Warnings and Intentional Non-Changes
-- `.venv/` was removed as requested, so project dependencies from that virtual environment are no longer available.
-- `.tmp/` contained access-denied entries; ownership/ACLs were reset only for `c:\Users\Z.BOX\Desktop\albiz_collector\.tmp` before deletion.
-- Tracked migration files, source files, parser/normalization/scraper logic, tests, and test fixtures were left unchanged.
-- `.env.example` remains tracked; no real `.env` was created.
+- No scraper behavior, parser behavior, normalization logic, materialization logic, CLI command names, database models, schema, or Alembic migrations were changed.
+- `.env.example` remains tracked; `.env` remains absent and ignored.
+- Existing `.venv/` was left untouched.
+- Generated pytest/cache/temp artifacts from verification were removed after the test run.

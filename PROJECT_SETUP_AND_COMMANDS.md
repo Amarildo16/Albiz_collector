@@ -153,7 +153,9 @@ Copy-Item .env.example .env
 
 What this does:
 
-- creates a local `.env` file that `config.py` will load automatically
+- creates a local `.env` file that `config.py` loads from the repository root
+- gives you a private place to edit local database and storage settings
+- keeps secrets and machine-specific paths out of Git because `.env` is ignored
 
 ### Step 7: Optional Playwright install
 
@@ -188,7 +190,7 @@ If `python` still points somewhere unexpected:
 | Variable | Used by | Meaning | Notes |
 | --- | --- | --- | --- |
 | `APP_ENV` | settings load only | General environment label | Loaded but not used for runtime branching in current code. |
-| `DATABASE_URL` | DB engine, Alembic, CLI | SQLAlchemy connection string | Most important setting. Current default is MySQL. |
+| `DATABASE_URL` | DB engine, Alembic, CLI | SQLAlchemy connection string | Most important setting. Current default is MySQL. Relative SQLite file URLs resolve against repo root. |
 | `RAW_STORAGE_DIR` | collectors, storage helpers | Root directory for raw artifact files | Relative paths are resolved against repo root. |
 | `HTTP_TIMEOUT_SECONDS` | `HttpClient` | Per-request timeout | Applies to live collectors and smoke checks. |
 | `HTTP_USER_AGENT` | `HttpClient` | Outbound User-Agent header | Good place to put a real contact string if you operationalize this. |

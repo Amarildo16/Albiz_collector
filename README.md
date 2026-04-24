@@ -55,6 +55,8 @@ Category pages currently configured:
 
 ## Quick start
 
+Use Python `3.11` or `3.12`; Python `3.12` is the locally verified path.
+
 ```bash
 python -m venv .venv
 .venv\Scripts\Activate.ps1  # PowerShell
@@ -66,6 +68,8 @@ Copy-Item .env.example .env  # PowerShell
 ```
 
 `requirements.txt` installs the package in editable mode and pulls runtime dependencies from `pyproject.toml`.
+
+Edit the copied `.env` for your local database and storage settings. Never commit `.env`; it is intentionally ignored. The project loads `.env` from the repository root, so commands run from another working directory use the same configuration. Relative `RAW_STORAGE_DIR` values and relative SQLite file URLs are resolved from the repository root.
 
 The default database URL is now MySQL via `PyMySQL`. Override `DATABASE_URL` in `.env` if you need a different MySQL user, password, host, or database name.
 
