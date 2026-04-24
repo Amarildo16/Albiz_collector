@@ -21,6 +21,8 @@ Saved `document-handler.js` / browser Network evidence confirms the document fet
 - Successful response shape: JSON object with `status > 0` and `data` containing a base64 PDF.
 - Historical proof: base64 prefix `JVBERi0xLjQ` decodes to `%PDF-1.4`.
 - Response header content type may be `text/html; charset=UTF-8` even when the body is JSON.
+- Historical browser evidence showed a cookie was sent; the sanitized fixture records only the cookie name `TS2f08e597027`, not its value.
+- The experimental one-NIPT CLI fetch also worked without manually supplying cookies.
 - `status == 0` means no document found.
 - `status < 0` means server error.
 
@@ -87,7 +89,7 @@ Only endpoint values found in this saved JavaScript should be marked as JavaScri
    - Any redirect chain.
    - Any error body if the response is not a PDF.
 
-Relevant replay headers usually include `Accept`, `Content-Type`, `Origin`, `Referer`, and user-agent-sensitive headers only if the server appears to require them. Do not preserve raw `Cookie` headers in fixtures.
+Confirmed replay headers are `Accept: */*`, `Content-Type: application/x-www-form-urlencoded`, `Origin: https://format.qkb.gov.al`, and `Referer: https://format.qkb.gov.al/kerko-per-subjekt/`. Do not preserve raw `Cookie` headers in fixtures.
 
 ## Capture Historical Extract Download Request
 

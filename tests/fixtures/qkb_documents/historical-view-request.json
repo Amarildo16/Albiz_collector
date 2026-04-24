@@ -20,10 +20,15 @@
       "docType": "historical"
     },
     "headers_relevant_to_replay": {
-      "Content-Type": "application/x-www-form-urlencoded"
+      "Accept": "*/*",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Origin": "https://format.qkb.gov.al",
+      "Referer": "https://format.qkb.gov.al/kerko-per-subjekt/"
     },
-    "cookies_sent": "unknown",
-    "cookie_names_if_required": []
+    "cookies_sent": "yes",
+    "cookie_names_if_required": [
+      "TS2f08e597027"
+    ]
   },
   "response": {
     "status_code": 200,
@@ -47,9 +52,9 @@
     "redirect_chain": []
   },
   "session_requirement": {
-    "works_without_cookies": "unknown",
+    "works_without_cookies": "yes",
     "requires_prior_search_page": "unknown",
     "requires_modal_opened_first": "unknown"
   },
-  "notes": "Sanitized proof fixture. Does not include raw cookies, session tokens, or the full base64 PDF payload."
+  "notes": "Sanitized proof fixture. Browser evidence sent cookie name TS2f08e597027, but raw cookie values are omitted. The experimental CLI one-NIPT fetch also worked without manually supplying cookies. Full base64 PDF payload is omitted."
 }

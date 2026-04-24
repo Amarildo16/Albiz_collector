@@ -85,7 +85,14 @@ class QkbDocumentClientTests(unittest.TestCase):
                 self.assertEqual(len(http.post_calls), 1)
                 self.assertEqual(http.post_calls[0]["url"], QKB_DOCUMENTS_ENDPOINT)
                 self.assertEqual(http.post_calls[0]["data"], {"nipt": "M12345678A", "docType": doc_type})
-                self.assertEqual(http.post_calls[0]["headers"], QKB_DOCUMENT_REQUEST_HEADERS)
+                expected_headers = {
+                    "Accept": "*/*",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Origin": "https://format.qkb.gov.al",
+                    "Referer": "https://format.qkb.gov.al/kerko-per-subjekt/",
+                }
+                self.assertEqual(QKB_DOCUMENT_REQUEST_HEADERS, expected_headers)
+                self.assertEqual(http.post_calls[0]["headers"], expected_headers)
                 self.assertIsNone(http.post_calls[0]["cookies"])
                 self.assertEqual(result.backend_state, "success")
 

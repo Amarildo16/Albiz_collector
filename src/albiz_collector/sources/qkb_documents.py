@@ -20,7 +20,12 @@ QKB_DOCUMENTS_ENDPOINT = (
     "national-registry/subject/search-for-subject-get-documents.php"
 )
 QKB_DOCUMENT_REQUEST_METHOD = "POST"
-QKB_DOCUMENT_REQUEST_HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
+QKB_DOCUMENT_REQUEST_HEADERS = {
+    "Accept": "*/*",
+    "Content-Type": "application/x-www-form-urlencoded",
+    "Origin": "https://format.qkb.gov.al",
+    "Referer": "https://format.qkb.gov.al/kerko-per-subjekt/",
+}
 ALLOWED_QKB_DOCUMENT_TYPES = ("historical", "simple", "rpp")
 QKB_DOCUMENT_FETCH_KINDS = {
     "historical": "historical_extract_pdf",
