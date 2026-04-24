@@ -20,6 +20,12 @@ from .profiling import profile_all_data, profile_feature_data, profile_normalize
 from .scheduler import start_scheduler
 from .smoke import run_app_source_contract_smoke_check, run_qkb_search_source_contract_smoke_check
 from .sources.app_exports import AppExportsCollector
+from .sources.qkb_documents import (
+    ALLOWED_QKB_DOCUMENT_TYPES,
+    QkbDocumentClient,
+    QkbDocumentCollector,
+    QkbDocumentError,
+)
 from .sources.qkb_notices_experimental import ExperimentalQkbNoticesCollector
 from .sources.qkb_search import QkbSearchCollector
 from .utils.logging import configure_logging
@@ -75,6 +81,60 @@ def run_experimental_qkb_notices(
     with SessionLocal() as db:
         result = ExperimentalQkbNoticesCollector().collect(db, use_playwright=playwright)
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@experimental_app.command("qkb-document-fetch-one")
+def run_experimental_qkb_document_fetch_one(
+    nipt: Annotated[str, typer.Option("--nipt", help="Single QKB NIPT to fetch")],
+    doc_type: Annotated[
+        str,
+        typer.Option(
+            "--doc-type",
+            help="One document type to fetch: historical, simple, or rpp",
+        ),
+    ] = "historical",
+    save: Annotated[
+        bool,
+        typer.Option(
+            "--save/--no-save",
+            help="Persist a successful decoded PDF through RawFetch storage",
+        ),
+    ] = False,
+) -> None:
+    try:
+        result = QkbDocumentClient().fetch_one(nipt=nipt, doc_type=doc_type)
+    except ValueError as exc:
+        allowed = ", ".join(ALLOWED_QKB_DOCUMENT_TYPES)
+        raise typer.BadParameter(f"{exc}; allowed document types: {allowed}") from exc
+    except QkbDocumentError as exc:
+        raise typer.ClickException(str(exc)) from exc
+
+    summary = result.to_summary()
+    summary.update(
+        {
+            "saved": False,
+            "content_hash": None,
+            "raw_fetch_id": None,
+            "raw_fetch_path": None,
+        }
+    )
+
+    if save and result.backend_state == "success":
+        with SessionLocal() as db:
+            raw_fetch = QkbDocumentCollector().save_pdf_result(db, result)
+            summary.update(
+                {
+                    "saved": True,
+                    "content_hash": raw_fetch.content_hash,
+                    "raw_fetch_id": raw_fetch.id,
+                    "raw_fetch_path": raw_fetch.storage_path,
+                }
+            )
+            db.commit()
+    elif save:
+        summary["save_skipped_reason"] = f"backend_state={result.backend_state}"
+
+    typer.echo(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
 
 
 @run_app.command("qkb-search")

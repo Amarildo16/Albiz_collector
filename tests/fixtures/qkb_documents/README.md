@@ -4,10 +4,10 @@ This directory is reserved for sanitized Phase 1 endpoint-discovery evidence for
 
 Do not store real cookies, session tokens, authorization headers, private browser profile paths, or broad scraped data here. Endpoint values should be treated as confirmed only when they come from a saved JavaScript fixture or captured browser Network evidence.
 
-Expected future files:
+Current and expected files:
 
 - `document-handler.js`: saved response body for the frontend document handler that defines `fetchAndDisplayPDF` and `downloadButtonPress`.
-- `historical-view-request.json`: sanitized browser Network metadata for the historical extract viewer request.
+- `historical-view-request.json`: sanitized browser Network metadata for the historical extract viewer request. This fixture records the confirmed POST endpoint and base64 PDF response shape without storing the full PDF.
 - `historical-download-request.json`: sanitized browser Network metadata for the historical extract download request.
 - `simple-view-request.json`: sanitized browser Network metadata for the simple extract viewer request.
 - `simple-download-request.json`: optional, only if simple download differs materially from simple view.

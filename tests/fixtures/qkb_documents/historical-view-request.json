@@ -1,0 +1,55 @@
+{
+  "capture_date": "2026-04-24",
+  "evidence_source": "saved_document_handler_js_and_browser_network",
+  "document_action": "historical_view",
+  "document_type": "historical",
+  "nipt_value": "SANITIZED_OR_PUBLIC_TEST_NIPT",
+  "confirmed_frontend_function": "fetchPdfBase64(nipt, docType, fullUrl)",
+  "request": {
+    "method": "POST",
+    "url": "https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/search-for-subject-get-documents.php",
+    "endpoint_path": "search-for-subject-get-documents.php",
+    "query_params": {},
+    "body_kind": "form",
+    "body_field_names": [
+      "nipt",
+      "docType"
+    ],
+    "body": {
+      "nipt": "SANITIZED_OR_PUBLIC_TEST_NIPT",
+      "docType": "historical"
+    },
+    "headers_relevant_to_replay": {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "cookies_sent": "unknown",
+    "cookie_names_if_required": []
+  },
+  "response": {
+    "status_code": 200,
+    "content_type": "text/html; charset=UTF-8",
+    "content_type_note": "The HTTP response may be text/html even though the body is JSON.",
+    "body_kind": "json",
+    "success_shape": {
+      "status": 1,
+      "data": "BASE64_PDF_OMITTED"
+    },
+    "backend_status_interpretation": {
+      "status_gt_0": "success",
+      "status_eq_0": "not_found",
+      "status_lt_0": "server_error"
+    },
+    "base64_data_prefix": "JVBERi0xLjQ",
+    "base64_prefix_decodes_to": "%PDF-1.4",
+    "starts_with_pdf_magic": true,
+    "sha256": "OMITTED_BECAUSE_FULL_PDF_IS_NOT_INCLUDED",
+    "content_disposition": "",
+    "redirect_chain": []
+  },
+  "session_requirement": {
+    "works_without_cookies": "unknown",
+    "requires_prior_search_page": "unknown",
+    "requires_modal_opened_first": "unknown"
+  },
+  "notes": "Sanitized proof fixture. Does not include raw cookies, session tokens, or the full base64 PDF payload."
+}

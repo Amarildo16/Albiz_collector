@@ -1,47 +1,62 @@
-# QKB Phase 1 Endpoint Discovery Prep Summary
+# Experimental QKB One-NIPT Document Fetch Summary
 
 Date: 2026-04-24
 
 ## Summary
 
-- Prepared Phase 1 endpoint discovery for QKB historical extract PDFs.
-- Added a manual discovery guide for capturing `document-handler.js` and browser Network evidence for historical, simple, and RPP document actions.
-- Added a sanitized fixture staging README for future QKB document endpoint evidence.
-- Added a pure offline parser for saved QKB search HTML document-action evidence.
-- Added parser tests using the existing saved QKB search fixture.
-- No endpoint URLs were guessed or marked confirmed from assumptions.
-- No live scraping was performed.
+- Added a very limited experimental one-NIPT QKB document fetch path using confirmed endpoint evidence only.
+- Implemented request payload validation for confirmed document types: `historical`, `simple`, and `rpp`.
+- Implemented POST handling for the confirmed `search-for-subject-get-documents.php` endpoint.
+- Implemented JSON parsing even when the response content type is `text/html; charset=UTF-8`.
+- Implemented backend status interpretation:
+  - `status > 0`: success.
+  - `status == 0`: not found.
+  - `status < 0`: server error.
+- Implemented base64 PDF decoding and `%PDF` magic validation.
+- Added optional RawFetch storage for a single successful decoded PDF through source `qkb_documents`.
+- Added an experimental CLI command for one document only:
+  - `python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt <NIPT> --doc-type historical`
+- No endpoint URLs were guessed.
+- No live scraping was performed during tests.
 - No real `.env` was created.
 
 ## Files Created Or Changed
 
-- Created `QKB_ENDPOINT_DISCOVERY_GUIDE.md`.
-- Created `tests/fixtures/qkb_documents/README.md`.
-- Created `src/albiz_collector/sources/qkb_document_actions.py`.
-- Created `tests/parsers/test_qkb_document_actions.py`.
+- Created `src/albiz_collector/sources/qkb_documents.py`.
+- Updated `src/albiz_collector/cli.py`.
+- Created `tests/sources/test_qkb_documents.py`.
+- Created `tests/fixtures/qkb_documents/historical-view-request.json`.
+- Updated `tests/fixtures/qkb_documents/README.md`.
+- Updated `QKB_ENDPOINT_DISCOVERY_GUIDE.md`.
 - Rewritten `changes_made.md`.
 
-## Parser Scope
+## Tests Added
 
-- Extracts available `data-doc` values from saved QKB search HTML.
-- Detects whether `fetchAndDisplayPDF` is referenced.
-- Detects whether `downloadButtonPress` is referenced.
-- Extracts the saved `fullUrl` value if present.
-- Intentionally leaves `pdf_endpoint` as `None` because the final PDF endpoint is not present in the saved search HTML fixture.
-- Performs no network requests.
+- Request payload construction for `historical`, `simple`, and `rpp`.
+- Invalid document type rejection.
+- Confirmed endpoint POST call shape with fake HTTP responses.
+- Successful JSON response with `text/html; charset=UTF-8` content type.
+- Base64 PDF decoding and `%PDF` validation.
+- `status == 0` not-found handling.
+- `status < 0` server-error handling.
+- Malformed JSON rejection.
+- Successful JSON with non-PDF base64 rejection.
+- Optional RawFetch storage for a successful single PDF.
+- Experimental CLI help coverage.
 
-## Tests
+## Test Result
 
 - Command run: `python -m pytest`
 - Python: `3.12.9` from the project virtual environment.
-- Result: `67 passed, 1 warning in 22.64s`.
-- Warning: pytest could not create its cache path because of a generated `pytest-cache-files-*` access-denied temp directory. That generated temp directory was removed after the test run.
+- Result: `77 passed, 1 warning in 23.28s`.
+- Warning: pytest could not create its cache path because of a generated `pytest-cache-files-*` access-denied temp directory. The generated temp directory was removed after the test run.
 
-## Confirmed Non-Changes
+## Intentional Non-Changes
 
-- No production QKB collector behavior changed.
-- No existing QKB search collection behavior changed.
+- No batch or broad QKB document collection was implemented.
+- No existing production QKB search collector behavior changed.
 - No database models changed.
 - No Alembic migrations were created.
-- No broad scraping or live endpoint requests were added.
-- No endpoint is treated as confirmed unless it comes from a future saved JavaScript fixture or captured Network evidence.
+- No normalized financial facts were added.
+- No raw cookies or session tokens are stored.
+- The experimental CLI command fetches at most one requested NIPT/document type per invocation.

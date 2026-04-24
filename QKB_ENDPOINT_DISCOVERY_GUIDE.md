@@ -2,11 +2,29 @@
 
 Date: 2026-04-24
 
-This guide prepares Phase 1 discovery for QKB subject document PDFs. It is for manual evidence capture only. Do not add production collector behavior, broad scraping, migrations, or guessed endpoints from this guide.
+This guide prepares and records Phase 1 discovery for QKB subject document PDFs. Do not add production collector behavior, broad scraping, migrations, or guessed endpoints from this guide.
 
 ## Evidence Rule
 
-Treat an endpoint as confirmed only if it appears in a saved JavaScript fixture or captured browser Network evidence. The existing QKB search HTML fixture confirms document action types and frontend function calls, but it does not confirm the final PDF endpoint.
+Treat an endpoint as confirmed only if it appears in a saved JavaScript fixture or captured browser Network evidence. The original QKB search HTML fixture confirmed document action types and frontend function calls, but not the final PDF endpoint.
+
+## Confirmed Endpoint Evidence
+
+Saved `document-handler.js` / browser Network evidence confirms the document fetch path used by `fetchPdfBase64(nipt, docType, fullUrl)`:
+
+- Endpoint path: `search-for-subject-get-documents.php`
+- Full endpoint: `https://format.qkb.gov.al/wp-content/themes/twentytwentyfive-child/modules/search/national-registry/subject/search-for-subject-get-documents.php`
+- Method: `POST`
+- Content type: `application/x-www-form-urlencoded`
+- Payload fields: `nipt` and `docType`
+- Confirmed document types: `historical`, `simple`, `rpp`
+- Successful response shape: JSON object with `status > 0` and `data` containing a base64 PDF.
+- Historical proof: base64 prefix `JVBERi0xLjQ` decodes to `%PDF-1.4`.
+- Response header content type may be `text/html; charset=UTF-8` even when the body is JSON.
+- `status == 0` means no document found.
+- `status < 0` means server error.
+
+Broad collection remains disabled. The only implemented fetch path should be an explicit experimental one-NIPT request using this confirmed endpoint.
 
 ## Setup
 
@@ -64,7 +82,8 @@ Only endpoint values found in this saved JavaScript should be marked as JavaScri
    - Response status.
    - Response content type.
    - Response size.
-   - Whether the response body starts with `%PDF`.
+   - Whether the response body is JSON with `status` and base64 `data`.
+   - Whether base64-decoded `data` starts with `%PDF`.
    - Any redirect chain.
    - Any error body if the response is not a PDF.
 
@@ -120,9 +139,10 @@ Do not store raw cookies or session tokens. If cookies are required, record only
 For each successful response:
 
 - Confirm status is expected, usually `200`.
-- Confirm `Content-Type` is `application/pdf` or otherwise explain the server behavior.
+- Confirm whether the response header `Content-Type` is `application/pdf`, `text/html; charset=UTF-8`, or another value.
+- If the body is JSON, confirm it includes `status` and base64 `data`.
 - Save response size in bytes.
-- Verify the first bytes are `%PDF`.
+- Verify decoded bytes start with `%PDF`.
 - Compute SHA-256 for the bytes.
 - Save only metadata unless storing a tiny/sanitized PDF fixture is legally safe.
 
