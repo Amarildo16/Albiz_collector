@@ -11,9 +11,14 @@ dist/
 .pytest_cache/
 .tmp/
 tests/.tmp/
+.coverage
+htmlcov/
 
 collector.db
+*.db
 *.sqlite
 *.sqlite3
 
 data/raw/
+data/processed/
+data/exports/

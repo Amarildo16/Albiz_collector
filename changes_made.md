@@ -1,73 +1,32 @@
-# Changes Made
+# Cleanup Summary
 
-- Timestamp: `2026-04-23 16:00:48 +02:00`
+Date: 2026-04-24
 
-## Files Changed
-- `README.md`
-- `FULL_AUDIT_REPORT.md`
-- `changes_made.md`
-- `docs/deployment_and_migration_runbook.md`
-- `alembic/versions/2026_04_23_1540_9f2e4a8c1b6d_add_qkb_search_run_tracking.py`
-- `src/albiz_collector/audit/__init__.py`
-- `src/albiz_collector/audit/qkb_search_runs.py`
-- `src/albiz_collector/cli.py`
-- `src/albiz_collector/models.py`
-- `src/albiz_collector/sources/qkb_search.py`
-- `tests/db/test_schema_bootstrap.py`
-- `tests/integration/mysql_runtime_flow_integration.py`
-- `tests/sources/test_qkb_search_collection.py`
+## Summary
+- Removed generated and runtime artifacts only.
+- Confirmed no generated ignored artifacts are tracked by Git.
+- Kept `.env.example` tracked and did not create a real `.env`.
+- No application, scraper, model, migration, parser, normalization, CLI, or test logic was changed.
 
-## Change Log
-- Change: add a migration-backed `qkb_search_runs` table for persistent resumable date-range progress.
-  - Files: `src/albiz_collector/models.py`, `alembic/versions/2026_04_23_1540_9f2e4a8c1b6d_add_qkb_search_run_tracking.py`, `tests/db/test_schema_bootstrap.py`, `tests/integration/mysql_runtime_flow_integration.py`
-  - Reason: qkb-search daily runs needed database-backed progress tracking instead of file-based checkpoints.
-  - Expected impact: date-range execution progress is now durable across process interruption, schema bootstrap includes the new table, and Alembic creates it safely on managed databases.
-  - Commands/tests rerun:
-    - `.venv\Scripts\python.exe -m unittest tests.db.test_schema_bootstrap -v`
-    - `$env:RUN_MYSQL_INTEGRATION_TESTS='1'; .venv\Scripts\python.exe -m unittest discover -s tests\integration -p "*_integration.py" -v`
+## Categories Removed
+- Python caches: `__pycache__/`, `*.pyc`, and `*.pyo`.
+- Build/install metadata: `src/albiz_collector.egg-info/` and `*.egg-info/`.
+- Local runtime directories: `.venv/`, `.tmp/`, and `tests/.tmp/`.
+- Runtime SQLite files: `collector.db` and verification/test SQLite databases under `.tmp/`.
+- Ignored generated raw data files under `data/raw/`; empty directory structure may remain.
 
-- Change: implement resumable qkb-search date-range execution with explicit restart support.
-  - Files: `src/albiz_collector/sources/qkb_search.py`, `src/albiz_collector/cli.py`
-  - Reason: the same unfinished qkb-search date range must resume from the next unfinished day instead of restarting silently from the beginning, while `--restart` must force a fresh run.
-  - Expected impact: qkb-search now persists per-range run state, commits progress only after successful days, stops on the first failed day, resumes deterministically, and reports whether a run is starting new, resuming, or restarting from scratch.
-  - Commands/tests rerun:
-    - `.venv\Scripts\python.exe -m albiz_collector.cli run qkb-search --help`
-    - `.venv\Scripts\python.exe -m unittest tests.sources.test_qkb_search_collection tests.parsers.test_qkb_search_parsing tests.normalization.test_qkb_search_normalization -v`
-    - `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v`
+## .gitignore Changes
+- Added permanent ignore coverage for `.coverage`, `htmlcov/`, `*.db`, `data/processed/`, and `data/exports/`.
+- Retained ignore coverage for `.env`, `.venv/`, `.tmp/`, `tests/.tmp/`, `.pytest_cache/`, `__pycache__/`, `*.py[cod]`, `*.pyo`, `*.pyd`, `*.egg-info/`, `collector.db`, `*.sqlite3`, and `data/raw/`.
+- Retained existing additional ignore entries for `.eggs/`, `build/`, `dist/`, and `*.sqlite`.
 
-- Change: add an operator-facing audit view for saved qkb-search runs.
-  - Files: `src/albiz_collector/audit/__init__.py`, `src/albiz_collector/audit/qkb_search_runs.py`, `src/albiz_collector/cli.py`
-  - Reason: operators need a supported way to inspect resumable qkb-search run progress and last saved errors without querying the database manually.
-  - Expected impact: `python -m albiz_collector.cli audit qkb-search-runs` now lists persisted qkb-search run rows and supports status/limit filters.
-  - Commands/tests rerun:
-    - `.venv\Scripts\python.exe -m albiz_collector.cli audit qkb-search-runs --help`
+## Verification
+- `git status --short` after artifact cleanup: only `.gitignore` was modified at that point.
+- `python -m pytest`: failed before test collection because the active Python does not have pytest installed.
+- Exact pytest error: `C:\Python314\python.exe: No module named pytest`.
 
-- Change: add focused qkb-search resume/restart tests and update operator docs.
-  - Files: `tests/sources/test_qkb_search_collection.py`, `README.md`, `docs/deployment_and_migration_runbook.md`, `FULL_AUDIT_REPORT.md`, `changes_made.md`
-  - Reason: the new run-state behavior needed deterministic test coverage and the repo docs needed to describe the real supported qkb-search workflow.
-  - Expected impact: regressions in resumable run-state behavior are covered, and the README/runbook/audit report now document DB-backed resume, `--restart`, and run-state inspection.
-  - Commands/tests rerun:
-    - `.venv\Scripts\python.exe -m unittest tests.sources.test_qkb_search_collection -v`
-    - `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v`
-
-## Final Verification Summary
-- `.venv\Scripts\python.exe -m albiz_collector.cli run qkb-search --help` -> passed, includes `--restart`
-- `.venv\Scripts\python.exe -m albiz_collector.cli audit qkb-search-runs --help` -> passed
-- `.venv\Scripts\python.exe -m unittest tests.sources.test_qkb_search_collection tests.db.test_schema_bootstrap -v` -> `11/11` passed
-- `.venv\Scripts\python.exe -m unittest tests.parsers.test_qkb_search_parsing tests.normalization.test_qkb_search_normalization -v` -> `8/8` passed
-- `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v` -> `61/61` passed
-- `$env:RUN_MYSQL_INTEGRATION_TESTS='1'; .venv\Scripts\python.exe -m unittest discover -s tests\integration -p "*_integration.py" -v` -> `3/3` passed
-
----
-
-## Supplemental Pass
-
-- Timestamp: `2026-04-23 16:45:37 +02:00`
-- Change: harden `test_qkb_search_cli_help_mentions_restart_and_not_playwright` against Rich/Typer ANSI-colored help output.
-  - Files: `tests/sources/test_qkb_search_collection.py`, `changes_made.md`
-  - Reason: the CLI help output is valid, but CI renders ANSI escape sequences around option text, making plain substring assertions on raw stdout brittle.
-  - Expected impact: the test now strips ANSI escape sequences before asserting that `--restart` is present and `--playwright` is absent, without changing qkb-search runtime behavior.
-  - Commands/tests rerun:
-    - `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v`
-- Verification:
-  - `.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v` -> `61/61` passed
+## Warnings and Intentional Non-Changes
+- `.venv/` was removed as requested, so project dependencies from that virtual environment are no longer available.
+- `.tmp/` contained access-denied entries; ownership/ACLs were reset only for `c:\Users\Z.BOX\Desktop\albiz_collector\.tmp` before deletion.
+- Tracked migration files, source files, parser/normalization/scraper logic, tests, and test fixtures were left unchanged.
+- `.env.example` remains tracked; no real `.env` was created.
