@@ -1,3 +1,26 @@
+# Dataset Documentation Draft — 2026-05-09
+
+## Summary
+
+- Created `DATASET_DOCUMENTATION_DRAFT.md`: a formal academic documentation file written in Albanian covering the dataset's purpose, QKB registry data importance, proposed dataset naming, technologies and collection techniques, raw vs normalized data architecture, source limitations, ethical and legal considerations, expected post-collection analyses, current implementation status, current limitations, and planned next phases.
+- The document is based exclusively on functionality already implemented in the repository.
+- No code changes, database schema changes, or new dependencies were introduced.
+
+## Files Changed
+
+- `DATASET_DOCUMENTATION_DRAFT.md` — new file added
+- `changes_made.md` — updated with this summary
+
+## Warnings And Intentional Non-Changes
+
+- No collector behavior changed.
+- No database models changed.
+- No Alembic migrations were created.
+- No tests were modified.
+- No real `.env` was created or modified.
+
+---
+
 # QKB Experimental Document Fetcher Hardening Summary
 
 Date: 2026-04-24
