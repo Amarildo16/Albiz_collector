@@ -446,6 +446,22 @@ class FeatureMaterializationTests(unittest.TestCase):
                             subject_status="Aktiv",
                             has_red_flags=None,
                         ),
+                        NormalizedQkbSearchRow(
+                            structured_record_id=22,
+                            snapshot_external_key="CONFLICTING|2025-01-01|2026-04-17",
+                            source_name="qkb_search",
+                            result_ordinal=2,
+                            search_nipt=None,
+                            search_date_from=date(2025, 1, 1),
+                            search_date_to=date(2026, 4, 17),
+                            business_nipt="L99999999A",
+                            business_name="Future Block Group",
+                            legal_form="SHPK",
+                            registration_date=date(2023, 1, 1),
+                            city="Tirane",
+                            subject_status="Aktiv",
+                            has_red_flags=None,
+                        ),
                     ]
                 )
                 db.commit()
@@ -459,6 +475,225 @@ class FeatureMaterializationTests(unittest.TestCase):
             self.assertTrue(features[0].exact_join_match)
             self.assertEqual(features[0].legal_form, "SHPK")
             self.assertEqual(features[0].company_age_days_at_first_procurement, 1467)
+
+    def test_materialize_joined_features_copies_expanded_app_and_qkb_fields(self) -> None:
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            joined_columns = {column["name"] for column in inspect(engine).get_columns("joined_company_features")}
+            for column_name in {
+                "source_row_count",
+                "active_procurement_count",
+                "safe_winner_to_budget_ratio_avg",
+                "purchase_tickets_count",
+                "registration_year",
+                "has_activity_text",
+                "rows_with_valid_ratio_count",
+            }:
+                self.assertIn(column_name, joined_columns)
+
+            with session_factory() as db:
+                db.add_all(
+                    [
+                        StructuredRecord(
+                            id=23,
+                            source_name="app_exports",
+                            record_type="procurement_export_year",
+                            external_key="2026",
+                            content_hash="hash-app-expanded",
+                        ),
+                        StructuredRecord(
+                            id=24,
+                            source_name="qkb_search",
+                            record_type="qkb_search_snapshot",
+                            external_key="expanded|2025-01-01|2026-04-17",
+                            content_hash="hash-qkb-expanded",
+                        ),
+                    ]
+                )
+                db.flush()
+                db.add_all(
+                    [
+                        NormalizedAppExportRow(
+                            structured_record_id=23,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=1,
+                            procurement_reference="REF-A",
+                            contracting_authority="Authority A",
+                            procedure_type="Small Value",
+                            contract_type="Services",
+                            publication_date=date(2020, 1, 10),
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=100,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=50,
+                        ),
+                        NormalizedAppExportRow(
+                            structured_record_id=23,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2010,
+                            row_ordinal=2,
+                            procurement_reference="REF-B",
+                            contracting_authority="Authority B",
+                            procedure_type="Open Local",
+                            contract_type="Works",
+                            publication_date=date(2022, 3, 1),
+                            is_cancelled=True,
+                            is_suspended=True,
+                            budget_limit_amount=200,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=150,
+                        ),
+                        NormalizedAppExportRow(
+                            structured_record_id=23,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=3,
+                            procurement_reference="REF-C",
+                            contracting_authority="Authority A",
+                            procedure_type="Purchase Tickets",
+                            contract_type="Services",
+                            publication_date=date(2021, 6, 1),
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=0,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=75,
+                        ),
+                        NormalizedAppExportRow(
+                            structured_record_id=23,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=4,
+                            procurement_reference="REF-MISSING",
+                            contracting_authority="Authority C",
+                            procedure_type="Open Local",
+                            contract_type="Services",
+                            publication_date=date(2024, 5, 5),
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=None,
+                            winner_name="Missing Amounts Company",
+                            winner_nipt="L12345678A",
+                            winner_value_amount=None,
+                        ),
+                        NormalizedQkbSearchRow(
+                            structured_record_id=24,
+                            snapshot_external_key="expanded|2025-01-01|2026-04-17",
+                            source_name="qkb_search",
+                            result_ordinal=1,
+                            search_nipt="M21528028T",
+                            search_date_from=date(2025, 1, 1),
+                            search_date_to=date(2026, 4, 17),
+                            business_nipt="M21528028T",
+                            business_name="Future Block Group",
+                            legal_form="SHPK",
+                            registration_date=date(2019, 1, 1),
+                            city="Tirane",
+                            ownership_text="Shqiptare (100%)",
+                            subject_status="Aprovuar",
+                            activity_text="Software",
+                            has_red_flags=True,
+                        ),
+                        NormalizedQkbSearchRow(
+                            structured_record_id=24,
+                            snapshot_external_key="expanded|2025-01-01|2026-04-17",
+                            source_name="qkb_search",
+                            result_ordinal=2,
+                            search_nipt="L12345678A",
+                            search_date_from=date(2025, 1, 1),
+                            search_date_to=date(2026, 4, 17),
+                            business_nipt="L12345678A",
+                            business_name="Missing Amounts Company",
+                            legal_form="Person Fizik",
+                            registration_date=date(2023, 1, 1),
+                            city="Durres",
+                            ownership_text=None,
+                            subject_status="Aktiv",
+                            activity_text=None,
+                            has_red_flags=False,
+                        ),
+                    ]
+                )
+                db.commit()
+
+                stats = materialize_joined_features(db)
+                features = db.scalars(
+                    select(JoinedCompanyFeature).order_by(JoinedCompanyFeature.company_nipt)
+                ).all()
+
+            self.assertEqual(stats["rows_materialized"], 2)
+            missing_amounts_feature = features[0]
+            expanded_feature = features[1]
+            self.assertEqual(missing_amounts_feature.company_nipt, "L12345678A")
+            self.assertIsNone(missing_amounts_feature.total_budget_limit_amount)
+            self.assertIsNone(missing_amounts_feature.total_winner_value_amount)
+            self.assertIsNone(missing_amounts_feature.safe_winner_to_budget_ratio_avg)
+            self.assertEqual(missing_amounts_feature.rows_with_budget_count, 0)
+            self.assertEqual(missing_amounts_feature.rows_with_winner_value_count, 0)
+            self.assertFalse(missing_amounts_feature.has_activity_text)
+            self.assertFalse(missing_amounts_feature.has_ownership_text)
+
+            self.assertEqual(expanded_feature.company_nipt, "M21528028T")
+            self.assertEqual(expanded_feature.source_row_count, 3)
+            self.assertEqual(expanded_feature.app_source_row_count, 3)
+            self.assertEqual(expanded_feature.active_procurement_count, 2)
+            self.assertEqual(expanded_feature.cancelled_procurement_count, 1)
+            self.assertEqual(expanded_feature.suspended_procurement_count, 1)
+            self.assertEqual(str(expanded_feature.cancelled_procurement_rate), "0.3333")
+            self.assertEqual(str(expanded_feature.suspended_procurement_rate), "0.3333")
+            self.assertEqual(str(expanded_feature.total_budget_limit_amount), "300.00")
+            self.assertEqual(str(expanded_feature.total_winner_value_amount), "275.00")
+            self.assertEqual(str(expanded_feature.active_total_budget_limit_amount), "100.00")
+            self.assertEqual(str(expanded_feature.active_total_winner_value_amount), "125.00")
+            self.assertEqual(str(expanded_feature.cancelled_total_budget_limit_amount), "200.00")
+            self.assertEqual(str(expanded_feature.cancelled_total_winner_value_amount), "150.00")
+            self.assertEqual(str(expanded_feature.safe_winner_to_budget_ratio_avg), "0.625000")
+            self.assertEqual(str(expanded_feature.safe_winner_to_budget_ratio_min), "0.500000")
+            self.assertEqual(str(expanded_feature.safe_winner_to_budget_ratio_max), "0.750000")
+            self.assertEqual(expanded_feature.purchase_tickets_count, 1)
+            self.assertEqual(str(expanded_feature.purchase_tickets_total_winner_value), "75.00")
+            self.assertEqual(expanded_feature.zero_budget_with_winner_value_count, 1)
+            self.assertEqual(str(expanded_feature.zero_budget_with_winner_value_rate), "0.3333")
+            self.assertEqual(expanded_feature.first_procurement_date, date(2020, 1, 10))
+            self.assertEqual(expanded_feature.last_procurement_date, date(2022, 3, 1))
+            self.assertEqual(expanded_feature.first_procurement_year, 2020)
+            self.assertEqual(expanded_feature.last_procurement_year, 2022)
+            self.assertEqual(expanded_feature.active_year_span, 3)
+            self.assertEqual(
+                expanded_feature.company_age_days_at_first_procurement,
+                (date(2020, 1, 10) - date(2019, 1, 1)).days,
+            )
+            self.assertEqual(
+                expanded_feature.company_age_days_at_last_procurement,
+                (date(2022, 3, 1) - date(2019, 1, 1)).days,
+            )
+            self.assertEqual(expanded_feature.distinct_contracting_authority_count, 2)
+            self.assertEqual(expanded_feature.distinct_procedure_type_count, 3)
+            self.assertEqual(expanded_feature.distinct_contract_type_count, 2)
+            self.assertTrue(expanded_feature.has_small_value_procedures)
+            self.assertTrue(expanded_feature.has_open_local_procedures)
+            self.assertEqual(expanded_feature.rows_with_winner_value_count, 3)
+            self.assertEqual(expanded_feature.rows_with_budget_count, 3)
+            self.assertEqual(expanded_feature.rows_with_valid_ratio_count, 2)
+            self.assertEqual(expanded_feature.business_name, "Future Block Group")
+            self.assertEqual(expanded_feature.legal_form, "SHPK")
+            self.assertEqual(expanded_feature.subject_status, "Aprovuar")
+            self.assertEqual(expanded_feature.registration_date, date(2019, 1, 1))
+            self.assertEqual(expanded_feature.registration_year, 2019)
+            self.assertEqual(expanded_feature.city, "Tirane")
+            self.assertTrue(expanded_feature.has_red_flags)
+            self.assertTrue(expanded_feature.has_activity_text)
+            self.assertTrue(expanded_feature.has_ownership_text)
 
     def test_feature_materialization_is_safe_to_rerun(self) -> None:
         with isolated_db_environment() as (_, session_factory, engine):
@@ -703,10 +938,14 @@ class FeatureMaterializationTests(unittest.TestCase):
 
         self.assertIn("app_company_features", registry)
         app_features = {feature.name: feature for feature in registry["app_company_features"]}
+        joined_features = {feature.name: feature for feature in registry["joined_company_features"]}
         self.assertEqual(app_features["active_procurement_count"].confidence, "safe")
         self.assertEqual(app_features["safe_winner_to_budget_ratio_avg"].confidence, "caution")
         self.assertEqual(app_features["purchase_tickets_count"].confidence, "caution")
         self.assertIn("rows_with_valid_ratio_count", app_features)
+        self.assertEqual(joined_features["source_row_count"].confidence, "safe")
+        self.assertEqual(joined_features["safe_winner_to_budget_ratio_avg"].confidence, "caution")
+        self.assertEqual(joined_features["has_red_flags"].confidence, "caution")
         self.assertEqual(registry["joined_company_features"][0].confidence, "safe")
 
 

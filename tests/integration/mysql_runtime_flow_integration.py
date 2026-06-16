@@ -38,6 +38,9 @@ class MySqlRuntimeFlowIntegrationTests(unittest.TestCase):
             app_feature_columns = {
                 column["name"] for column in inspector.get_columns("app_company_features")
             }
+            joined_feature_columns = {
+                column["name"] for column in inspector.get_columns("joined_company_features")
+            }
             qkb_search_run_columns = {
                 column["name"] for column in inspector.get_columns("qkb_search_runs")
             }
@@ -52,6 +55,10 @@ class MySqlRuntimeFlowIntegrationTests(unittest.TestCase):
         self.assertIn("active_procurement_count", app_feature_columns)
         self.assertIn("safe_winner_to_budget_ratio_avg", app_feature_columns)
         self.assertIn("purchase_tickets_count", app_feature_columns)
+        self.assertIn("source_row_count", joined_feature_columns)
+        self.assertIn("active_procurement_count", joined_feature_columns)
+        self.assertIn("registration_year", joined_feature_columns)
+        self.assertIn("has_activity_text", joined_feature_columns)
         self.assertIn("current_date", qkb_search_run_columns)
         self.assertIn("status", qkb_search_run_columns)
 
