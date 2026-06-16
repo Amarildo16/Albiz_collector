@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -38,6 +38,46 @@ def _decimal_sum(values: list[Decimal]) -> Decimal | None:
     return sum(values, Decimal("0"))
 
 
+def _to_decimal(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(value))
+
+
+def _decimal_values(rows: list[Any], field_name: str) -> list[Decimal]:
+    values: list[Decimal] = []
+    for row in rows:
+        value = _to_decimal(getattr(row, field_name))
+        if value is not None:
+            values.append(value)
+    return values
+
+
+def _filtered_decimal_sum(rows: list[Any], field_name: str) -> Decimal | None:
+    values = _decimal_values(rows, field_name)
+    if values:
+        return _decimal_sum(values)
+    if not rows:
+        return Decimal("0")
+    return None
+
+
+def _rate_decimal(count: int, total: int) -> Decimal:
+    if total <= 0:
+        return Decimal("0.0000")
+    return (Decimal(count) / Decimal(total)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+
+def _ratio_decimal(numerator: Decimal, denominator: Decimal) -> Decimal:
+    return (numerator / denominator).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+
+def _average_decimal(values: list[Decimal]) -> Decimal | None:
+    if not values:
+        return None
+    return _ratio_decimal(sum(values, Decimal("0")), Decimal(len(values)))
+
+
 def _latest_non_empty(rows: list[Any], field_name: str) -> str | None:
     for row in rows:
         value = getattr(row, field_name)
@@ -50,6 +90,10 @@ def _date_diff_days(start_date, end_date) -> int | None:
     if start_date is None or end_date is None:
         return None
     return (end_date - start_date).days
+
+
+def _is_purchase_tickets(row: NormalizedAppExportRow) -> bool:
+    return bool(row.procedure_type and row.procedure_type.strip().lower() == "purchase tickets")
 
 
 @dataclass(frozen=True)
@@ -81,8 +125,20 @@ def _build_app_features(rows: list[NormalizedAppExportRow]) -> tuple[list[AppCom
             reverse=True,
         )
         publication_dates = [row.publication_date for row in company_rows if row.publication_date is not None]
-        budget_values = [Decimal(str(row.budget_limit_amount)) for row in company_rows if row.budget_limit_amount is not None]
-        winner_values = [Decimal(str(row.winner_value_amount)) for row in company_rows if row.winner_value_amount is not None]
+        first_procurement_date = min(publication_dates) if publication_dates else None
+        last_procurement_date = max(publication_dates) if publication_dates else None
+        first_procurement_year = first_procurement_date.year if first_procurement_date is not None else None
+        last_procurement_year = last_procurement_date.year if last_procurement_date is not None else None
+        active_year_span = (
+            last_procurement_year - first_procurement_year + 1
+            if first_procurement_year is not None and last_procurement_year is not None
+            else None
+        )
+        active_rows = [row for row in company_rows if row.is_cancelled is False]
+        cancelled_rows = [row for row in company_rows if row.is_cancelled is True]
+        purchase_tickets_rows = [row for row in company_rows if _is_purchase_tickets(row)]
+        budget_values = _decimal_values(company_rows, "budget_limit_amount")
+        winner_values = _decimal_values(company_rows, "winner_value_amount")
         procedure_types = {row.procedure_type.strip() for row in company_rows if row.procedure_type and row.procedure_type.strip()}
         contract_types = {row.contract_type.strip() for row in company_rows if row.contract_type and row.contract_type.strip()}
         authorities = {
@@ -90,26 +146,63 @@ def _build_app_features(rows: list[NormalizedAppExportRow]) -> tuple[list[AppCom
             for row in company_rows
             if row.contracting_authority and row.contracting_authority.strip()
         }
+        valid_ratio_values: list[Decimal] = []
+        zero_budget_with_winner_value_count = 0
+        for row in company_rows:
+            budget_value = _to_decimal(row.budget_limit_amount)
+            winner_value = _to_decimal(row.winner_value_amount)
+            if budget_value == Decimal("0") and winner_value is not None:
+                zero_budget_with_winner_value_count += 1
+            if budget_value is not None and budget_value > 0 and winner_value is not None:
+                valid_ratio_values.append(_ratio_decimal(winner_value, budget_value))
+
+        source_row_count = len(company_rows)
+        active_procurement_count = len(active_rows)
+        cancelled_procurement_count = len(cancelled_rows)
+        suspended_procurement_count = sum(1 for row in company_rows if row.is_suspended is True)
 
         features.append(
             AppCompanyFeature(
                 company_nipt=company_nipt,
                 materialized_at=materialized_at,
-                source_row_count=len(company_rows),
+                source_row_count=source_row_count,
                 source_snapshot_count=len({row.structured_record_id for row in company_rows}),
                 source_structured_record_ids=sorted({row.structured_record_id for row in company_rows}),
                 latest_winner_name=_latest_non_empty(ordered_rows, "winner_name"),
-                first_procurement_date=min(publication_dates) if publication_dates else None,
-                last_procurement_date=max(publication_dates) if publication_dates else None,
+                first_procurement_date=first_procurement_date,
+                last_procurement_date=last_procurement_date,
+                first_procurement_year=first_procurement_year,
+                last_procurement_year=last_procurement_year,
+                active_year_span=active_year_span,
+                active_procurement_count=active_procurement_count,
+                cancelled_procurement_count=cancelled_procurement_count,
+                suspended_procurement_count=suspended_procurement_count,
+                cancelled_procurement_rate=_rate_decimal(cancelled_procurement_count, source_row_count),
+                suspended_procurement_rate=_rate_decimal(suspended_procurement_count, source_row_count),
                 total_budget_limit_amount=_decimal_sum(budget_values),
                 total_winner_value_amount=_decimal_sum(winner_values),
-                cancelled_procurement_count=sum(1 for row in company_rows if row.is_cancelled is True),
-                suspended_procurement_count=sum(1 for row in company_rows if row.is_suspended is True),
+                active_total_budget_limit_amount=_filtered_decimal_sum(active_rows, "budget_limit_amount"),
+                active_total_winner_value_amount=_filtered_decimal_sum(active_rows, "winner_value_amount"),
+                cancelled_total_budget_limit_amount=_filtered_decimal_sum(cancelled_rows, "budget_limit_amount"),
+                cancelled_total_winner_value_amount=_filtered_decimal_sum(cancelled_rows, "winner_value_amount"),
+                safe_winner_to_budget_ratio_avg=_average_decimal(valid_ratio_values),
+                safe_winner_to_budget_ratio_min=min(valid_ratio_values) if valid_ratio_values else None,
+                safe_winner_to_budget_ratio_max=max(valid_ratio_values) if valid_ratio_values else None,
+                purchase_tickets_count=len(purchase_tickets_rows),
+                purchase_tickets_total_winner_value=_filtered_decimal_sum(
+                    purchase_tickets_rows,
+                    "winner_value_amount",
+                ),
+                zero_budget_with_winner_value_count=zero_budget_with_winner_value_count,
+                zero_budget_with_winner_value_rate=_rate_decimal(zero_budget_with_winner_value_count, source_row_count),
                 distinct_contracting_authority_count=len(authorities),
                 distinct_procedure_type_count=len(procedure_types),
                 distinct_contract_type_count=len(contract_types),
                 has_small_value_procedures=any("small value" in value.lower() for value in procedure_types),
                 has_open_local_procedures=any("open local" in value.lower() for value in procedure_types),
+                rows_with_winner_value_count=len(winner_values),
+                rows_with_budget_count=len(budget_values),
+                rows_with_valid_ratio_count=len(valid_ratio_values),
             )
         )
 

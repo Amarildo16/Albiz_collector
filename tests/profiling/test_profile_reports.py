@@ -154,9 +154,20 @@ class ProfileReportsTests(unittest.TestCase):
 
                 report = profile_feature_data(db)
 
+            app_profiles = {
+                item["name"]: item
+                for item in report["feature_sparsity"]["app_company_features"]["feature_profiles"]
+            }
             self.assertEqual(report["row_counts"]["app_company_features"], 1)
             self.assertEqual(report["row_counts"]["qkb_company_features"], 1)
             self.assertEqual(report["row_counts"]["joined_company_features"], 1)
+            self.assertIn("active_procurement_count", app_profiles)
+            self.assertIn("safe_winner_to_budget_ratio_avg", app_profiles)
+            self.assertIn("purchase_tickets_count", app_profiles)
+            self.assertEqual(app_profiles["active_procurement_count"]["confidence"], "safe")
+            self.assertEqual(app_profiles["safe_winner_to_budget_ratio_avg"]["confidence"], "caution")
+            self.assertEqual(app_profiles["purchase_tickets_count"]["confidence"], "caution")
+            self.assertEqual(app_profiles["active_procurement_count"]["present_count"], 1)
             self.assertEqual(report["readiness"]["joined_company_features"]["status"], "usable_now")
 
     def test_profile_all_data_surfaces_blockers_when_join_coverage_is_zero(self) -> None:

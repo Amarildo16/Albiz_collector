@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 
 from albiz_collector.db import Base
 from albiz_collector.features.materialize import (
@@ -118,11 +118,157 @@ class FeatureMaterializationTests(unittest.TestCase):
             self.assertEqual(len(features), 1)
             self.assertEqual(features[0].company_nipt, "M21528028T")
             self.assertEqual(features[0].source_row_count, 2)
+            self.assertEqual(features[0].active_procurement_count, 1)
             self.assertEqual(str(features[0].total_budget_limit_amount), "3000.00")
             self.assertEqual(str(features[0].total_winner_value_amount), "800.00")
+            self.assertEqual(str(features[0].active_total_budget_limit_amount), "1000.00")
+            self.assertEqual(str(features[0].active_total_winner_value_amount), "800.00")
+            self.assertEqual(str(features[0].cancelled_total_budget_limit_amount), "2000.00")
+            self.assertIsNone(features[0].cancelled_total_winner_value_amount)
             self.assertEqual(features[0].cancelled_procurement_count, 1)
+            self.assertEqual(str(features[0].cancelled_procurement_rate), "0.5000")
             self.assertTrue(features[0].has_small_value_procedures)
             self.assertTrue(features[0].has_open_local_procedures)
+
+    def test_materialize_app_features_builds_enhanced_company_features(self) -> None:
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            app_feature_columns = {column["name"] for column in inspect(engine).get_columns("app_company_features")}
+            for column_name in {
+                "source_row_count",
+                "total_budget_limit_amount",
+                "has_small_value_procedures",
+                "active_procurement_count",
+                "safe_winner_to_budget_ratio_avg",
+                "purchase_tickets_count",
+                "rows_with_valid_ratio_count",
+            }:
+                self.assertIn(column_name, app_feature_columns)
+
+            with session_factory() as db:
+                db.add(
+                    StructuredRecord(
+                        id=3,
+                        source_name="app_exports",
+                        record_type="procurement_export_year",
+                        external_key="2026",
+                        content_hash="hash-3",
+                    )
+                )
+                db.flush()
+                db.add_all(
+                    [
+                        NormalizedAppExportRow(
+                            structured_record_id=3,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=1,
+                            procurement_reference="REF-A",
+                            contracting_authority="Authority A",
+                            procedure_type="Small Value",
+                            contract_type="Services",
+                            publication_date=date(2020, 1, 10),
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=100,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=50,
+                        ),
+                        NormalizedAppExportRow(
+                            structured_record_id=3,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2010,
+                            row_ordinal=2,
+                            procurement_reference="REF-B",
+                            contracting_authority="Authority B",
+                            procedure_type="Open Local",
+                            contract_type="Works",
+                            publication_date=date(2022, 3, 1),
+                            is_cancelled=True,
+                            is_suspended=True,
+                            budget_limit_amount=200,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=150,
+                        ),
+                        NormalizedAppExportRow(
+                            structured_record_id=3,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=3,
+                            procurement_reference="REF-C",
+                            contracting_authority="Authority A",
+                            procedure_type="Purchase Tickets",
+                            contract_type="Services",
+                            publication_date=date(2021, 6, 1),
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=0,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=75,
+                        ),
+                        NormalizedAppExportRow(
+                            structured_record_id=3,
+                            snapshot_external_key="2026",
+                            source_name="app_exports",
+                            export_year=2026,
+                            row_ordinal=4,
+                            procurement_reference="REF-D",
+                            contracting_authority="Authority C",
+                            procedure_type="Purchase Tickets",
+                            contract_type="Services",
+                            publication_date=None,
+                            is_cancelled=False,
+                            is_suspended=False,
+                            budget_limit_amount=None,
+                            winner_name="Future Block Group",
+                            winner_nipt="M21528028T",
+                            winner_value_amount=25,
+                        ),
+                    ]
+                )
+                db.commit()
+
+                stats = materialize_app_features(db)
+                feature = db.scalars(select(AppCompanyFeature)).one()
+
+            self.assertEqual(stats["rows_materialized"], 1)
+            self.assertEqual(feature.source_row_count, 4)
+            self.assertEqual(feature.active_procurement_count, 3)
+            self.assertEqual(feature.cancelled_procurement_count, 1)
+            self.assertEqual(feature.suspended_procurement_count, 1)
+            self.assertEqual(str(feature.cancelled_procurement_rate), "0.2500")
+            self.assertEqual(str(feature.suspended_procurement_rate), "0.2500")
+            self.assertEqual(str(feature.total_budget_limit_amount), "300.00")
+            self.assertEqual(str(feature.total_winner_value_amount), "300.00")
+            self.assertEqual(str(feature.active_total_budget_limit_amount), "100.00")
+            self.assertEqual(str(feature.active_total_winner_value_amount), "150.00")
+            self.assertEqual(str(feature.cancelled_total_budget_limit_amount), "200.00")
+            self.assertEqual(str(feature.cancelled_total_winner_value_amount), "150.00")
+            self.assertEqual(str(feature.safe_winner_to_budget_ratio_avg), "0.625000")
+            self.assertEqual(str(feature.safe_winner_to_budget_ratio_min), "0.500000")
+            self.assertEqual(str(feature.safe_winner_to_budget_ratio_max), "0.750000")
+            self.assertEqual(feature.purchase_tickets_count, 2)
+            self.assertEqual(str(feature.purchase_tickets_total_winner_value), "100.00")
+            self.assertEqual(feature.zero_budget_with_winner_value_count, 1)
+            self.assertEqual(str(feature.zero_budget_with_winner_value_rate), "0.2500")
+            self.assertEqual(feature.first_procurement_date, date(2020, 1, 10))
+            self.assertEqual(feature.last_procurement_date, date(2022, 3, 1))
+            self.assertEqual(feature.first_procurement_year, 2020)
+            self.assertEqual(feature.last_procurement_year, 2022)
+            self.assertEqual(feature.active_year_span, 3)
+            self.assertEqual(feature.distinct_contracting_authority_count, 3)
+            self.assertEqual(feature.distinct_procedure_type_count, 3)
+            self.assertEqual(feature.distinct_contract_type_count, 2)
+            self.assertEqual(feature.rows_with_winner_value_count, 4)
+            self.assertEqual(feature.rows_with_budget_count, 3)
+            self.assertEqual(feature.rows_with_valid_ratio_count, 2)
 
     def test_materialize_qkb_features_handles_missing_optional_fields(self) -> None:
         with isolated_db_environment() as (_, session_factory, engine):
@@ -556,6 +702,11 @@ class FeatureMaterializationTests(unittest.TestCase):
         registry = get_feature_registry()
 
         self.assertIn("app_company_features", registry)
+        app_features = {feature.name: feature for feature in registry["app_company_features"]}
+        self.assertEqual(app_features["active_procurement_count"].confidence, "safe")
+        self.assertEqual(app_features["safe_winner_to_budget_ratio_avg"].confidence, "caution")
+        self.assertEqual(app_features["purchase_tickets_count"].confidence, "caution")
+        self.assertIn("rows_with_valid_ratio_count", app_features)
         self.assertEqual(registry["joined_company_features"][0].confidence, "safe")
 
 

@@ -35,6 +35,9 @@ class MySqlRuntimeFlowIntegrationTests(unittest.TestCase):
             inspector = inspect(ctx.engine)
             table_names = set(inspector.get_table_names())
             raw_fetch_columns = {column["name"] for column in inspector.get_columns("raw_fetches")}
+            app_feature_columns = {
+                column["name"] for column in inspector.get_columns("app_company_features")
+            }
             qkb_search_run_columns = {
                 column["name"] for column in inspector.get_columns("qkb_search_runs")
             }
@@ -46,6 +49,9 @@ class MySqlRuntimeFlowIntegrationTests(unittest.TestCase):
         self.assertIn("qkb_search_runs", table_names)
         self.assertIn("is_corrupted", raw_fetch_columns)
         self.assertIn("corruption_reason", raw_fetch_columns)
+        self.assertIn("active_procurement_count", app_feature_columns)
+        self.assertIn("safe_winner_to_budget_ratio_avg", app_feature_columns)
+        self.assertIn("purchase_tickets_count", app_feature_columns)
         self.assertIn("current_date", qkb_search_run_columns)
         self.assertIn("status", qkb_search_run_columns)
 
