@@ -178,6 +178,33 @@ def run_qkb_search(
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 
+@run_app.command("qkb-shpk-universe")
+def run_qkb_shpk_universe(
+    data_nga: Annotated[str, typer.Option("--data-nga", help="Registration start date YYYY-MM-DD")],
+    data_ne: Annotated[str, typer.Option("--data-ne", help="Registration end date YYYY-MM-DD")],
+    restart: Annotated[
+        bool,
+        typer.Option(
+            "--restart",
+            help="Restart a resumable qkb-shpk-universe date-range run from the beginning instead of resuming saved progress",
+        ),
+    ] = False,
+) -> None:
+    parsed_data_nga = _parse_date_option(data_nga, "--data-nga")
+    parsed_data_ne = _parse_date_option(data_ne, "--data-ne")
+    if parsed_data_nga is None or parsed_data_ne is None:
+        raise typer.BadParameter("--data-nga and --data-ne are required")
+
+    with SessionLocal() as db:
+        result = QkbSearchCollector().collect_shpk_universe(
+            db,
+            data_nga=parsed_data_nga,
+            data_ne=parsed_data_ne,
+            restart=restart,
+        )
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
 @normalize_app.command("app-exports")
 def normalize_app_exports_command() -> None:
     with SessionLocal() as db:

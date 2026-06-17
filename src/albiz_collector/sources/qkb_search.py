@@ -28,9 +28,12 @@ UNFINISHED_RUN_STATUSES = (
     RUN_STATUS_INTERRUPTED,
 )
 RUN_MODE_DAILY_RANGE = "daily_range"
+RUN_MODE_DAILY_LEGAL_FORM_SHPK = "daily_legal_form_shpk"
 RUN_START_BEHAVIOR_NEW = "starting_new"
 RUN_START_BEHAVIOR_RESUMED = "resuming_existing"
 RUN_START_BEHAVIOR_RESTARTED = "restarting_from_scratch"
+QKB_SHPK_LEGAL_FORM_FILTER = "Shoqeri me pergjegjesi te kufizuar"
+QKB_SHPK_EXTERNAL_KEY_PREFIX = "legal_form:SHPK"
 QKB_LEGAL_FORM_FILTER_VALUES = (
     "Person Fizik",
     "Shoqeri me pergjegjesi te kufizuar",
@@ -130,6 +133,28 @@ class QkbSearchCollector(CollectorBase):
             "unique_external_keys": [single_result["external_key"]],
             "per_day_summaries": [],
         }
+
+    def collect_shpk_universe(
+        self,
+        db: Session,
+        *,
+        data_nga: date,
+        data_ne: date,
+        restart: bool = False,
+    ) -> dict[str, Any]:
+        if data_nga > data_ne:
+            raise ValueError("data_nga must be on or before data_ne")
+
+        return self._collect_daily_range(
+            db,
+            requested_data_nga=data_nga,
+            requested_data_ne=data_ne,
+            requested_range_days=self._requested_range_days(data_nga, data_ne),
+            restart=restart,
+            run_mode=RUN_MODE_DAILY_LEGAL_FORM_SHPK,
+            legal_form_filter=QKB_SHPK_LEGAL_FORM_FILTER,
+            external_key_prefix=QKB_SHPK_EXTERNAL_KEY_PREFIX,
+        )
 
     def probe_legal_form_chunks(
         self,
@@ -242,12 +267,16 @@ class QkbSearchCollector(CollectorBase):
         requested_data_ne: date,
         requested_range_days: int,
         restart: bool,
+        run_mode: str = RUN_MODE_DAILY_RANGE,
+        legal_form_filter: str | None = None,
+        external_key_prefix: str | None = None,
     ) -> dict[str, Any]:
         run_start = self._start_or_resume_daily_run(
             db,
             requested_data_nga=requested_data_nga,
             requested_data_ne=requested_data_ne,
             restart=restart,
+            run_mode=run_mode,
         )
 
         per_day_summaries: list[dict[str, Any]] = []
@@ -272,6 +301,8 @@ class QkbSearchCollector(CollectorBase):
                             nipt=None,
                             data_nga=current,
                             data_ne=current,
+                            legal_form_filter=legal_form_filter,
+                            external_key_prefix=external_key_prefix,
                         )
                     except Exception as exc:
                         db.rollback()
@@ -294,6 +325,8 @@ class QkbSearchCollector(CollectorBase):
                             requested_data_nga=requested_data_nga,
                             requested_data_ne=requested_data_ne,
                             requested_range_days=requested_range_days,
+                            run_mode=run_mode,
+                            legal_form_filter=legal_form_filter,
                             successful_day_searches=successful_day_searches,
                             failed_day_searches=failed_day_searches,
                             total_raw_rows_found=total_raw_rows_found,
@@ -345,6 +378,8 @@ class QkbSearchCollector(CollectorBase):
                 requested_data_nga=requested_data_nga,
                 requested_data_ne=requested_data_ne,
                 requested_range_days=requested_range_days,
+                run_mode=run_mode,
+                legal_form_filter=legal_form_filter,
                 successful_day_searches=successful_day_searches,
                 failed_day_searches=failed_day_searches,
                 total_raw_rows_found=total_raw_rows_found,
@@ -361,6 +396,8 @@ class QkbSearchCollector(CollectorBase):
             requested_data_nga=requested_data_nga,
             requested_data_ne=requested_data_ne,
             requested_range_days=requested_range_days,
+            run_mode=run_mode,
+            legal_form_filter=legal_form_filter,
             successful_day_searches=successful_day_searches,
             failed_day_searches=failed_day_searches,
             total_raw_rows_found=total_raw_rows_found,
@@ -378,6 +415,8 @@ class QkbSearchCollector(CollectorBase):
         requested_data_nga: date,
         requested_data_ne: date,
         requested_range_days: int,
+        run_mode: str,
+        legal_form_filter: str | None,
         successful_day_searches: int,
         failed_day_searches: int,
         total_raw_rows_found: int,
@@ -391,13 +430,16 @@ class QkbSearchCollector(CollectorBase):
             days_completed_total = requested_range_days
 
         days_remaining_after_run = max(0, requested_range_days - days_completed_total)
+        canonical_legal_form = canonicalize_qkb_legal_form(legal_form_filter)
 
-        return {
+        summary = {
             "source_name": self.source_name,
             "mode": "http",
-            "search_mode": RUN_MODE_DAILY_RANGE,
+            "search_mode": run_mode,
             "date_chunking_applied": True,
             "nipt": None,
+            "legal_form_filter": legal_form_filter,
+            "canonical_legal_form_filter": canonical_legal_form,
             "data_nga": requested_data_nga.isoformat(),
             "data_ne": requested_data_ne.isoformat(),
             "requested_data_nga": requested_data_nga.isoformat(),
@@ -429,6 +471,12 @@ class QkbSearchCollector(CollectorBase):
             "per_day_summaries": per_day_summaries,
         }
 
+        if canonical_legal_form == "SHPK":
+            summary["days_returning_exactly_50_shpk_results"] = len(potentially_truncated_days)
+            summary["potentially_truncated_shpk_days"] = potentially_truncated_days
+
+        return summary
+
     def _collect_single_window(
         self,
         db: Session,
@@ -438,9 +486,17 @@ class QkbSearchCollector(CollectorBase):
         nipt: str | None,
         data_nga: date | None,
         data_ne: date | None,
+        legal_form_filter: str | None = None,
+        external_key_prefix: str | None = None,
     ) -> dict[str, Any]:
-        form_data = self._build_form_data(nipt=nipt, data_nga=data_nga, data_ne=data_ne)
+        form_data = self._build_form_data(
+            nipt=nipt,
+            data_nga=data_nga,
+            data_ne=data_ne,
+            legal_form=legal_form_filter,
+        )
         response = self._execute_search_request(http, session_cookies=session_cookies, form_data=form_data)
+        canonical_legal_form = canonicalize_qkb_legal_form(legal_form_filter)
 
         raw_row = self.save_raw_fetch(
             db,
@@ -449,9 +505,16 @@ class QkbSearchCollector(CollectorBase):
             fetch_kind="search_results_page",
             status_code=response.status_code,
             content_type=response.content_type,
-            filename=self._build_filename(nipt=nipt, data_nga=data_nga, data_ne=data_ne),
+            filename=self._build_filename(
+                nipt=nipt,
+                data_nga=data_nga,
+                data_ne=data_ne,
+                legal_form_filter=legal_form_filter,
+            ),
             extra_metadata={
                 "nipt": nipt,
+                "legal_form_filter": legal_form_filter,
+                "canonical_legal_form_filter": canonical_legal_form,
                 "data_nga": data_nga.isoformat() if data_nga else None,
                 "data_ne": data_ne.isoformat() if data_ne else None,
                 "form_data": form_data,
@@ -468,7 +531,13 @@ class QkbSearchCollector(CollectorBase):
                 f"Failed to parse QKB search response from saved raw fetch {raw_row.id}"
             ) from exc
 
-        external_key = self._build_external_key(nipt=nipt, data_nga=data_nga, data_ne=data_ne)
+        external_key = self._build_external_key(
+            nipt=nipt,
+            data_nga=data_nga,
+            data_ne=data_ne,
+            legal_form_filter=legal_form_filter,
+            external_key_prefix=external_key_prefix,
+        )
         structured_row = self.upsert_structured_record(
             db,
             record_type="qkb_search_snapshot",
@@ -478,6 +547,8 @@ class QkbSearchCollector(CollectorBase):
             content_hash=raw_row.content_hash,
             payload={
                 "nipt": nipt,
+                "legal_form_filter": legal_form_filter,
+                "canonical_legal_form_filter": canonical_legal_form,
                 "data_nga": data_nga.isoformat() if data_nga else None,
                 "data_ne": data_ne.isoformat() if data_ne else None,
                 "raw_fetch_id": raw_row.id,
@@ -497,6 +568,8 @@ class QkbSearchCollector(CollectorBase):
         return {
             "source_name": self.source_name,
             "nipt": nipt,
+            "legal_form_filter": legal_form_filter,
+            "canonical_legal_form_filter": canonical_legal_form,
             "data_nga": data_nga.isoformat() if data_nga else None,
             "data_ne": data_ne.isoformat() if data_ne else None,
             "raw_fetch_id": raw_row.id,
@@ -549,8 +622,9 @@ class QkbSearchCollector(CollectorBase):
         nipt: str | None = None,
         data_nga: date | None = None,
         data_ne: date | None = None,
+        legal_form_filter: str | None = None,
     ) -> str:
-        nipt_part = nipt or "all"
+        nipt_part = self._build_external_key_subject(nipt=nipt, legal_form_filter=legal_form_filter).replace(":", "-")
         from_part = data_nga.isoformat() if data_nga else "none"
         to_part = data_ne.isoformat() if data_ne else "none"
         return f"qkb-search-{nipt_part}-{from_part}-{to_part}.html"
@@ -560,14 +634,27 @@ class QkbSearchCollector(CollectorBase):
         nipt: str | None = None,
         data_nga: date | None = None,
         data_ne: date | None = None,
+        legal_form_filter: str | None = None,
+        external_key_prefix: str | None = None,
     ) -> str:
         return "|".join(
             [
-                nipt or "all",
+                external_key_prefix
+                or self._build_external_key_subject(nipt=nipt, legal_form_filter=legal_form_filter),
                 data_nga.isoformat() if data_nga else "none",
                 data_ne.isoformat() if data_ne else "none",
             ]
         )
+
+    @staticmethod
+    def _build_external_key_subject(
+        *,
+        nipt: str | None = None,
+        legal_form_filter: str | None = None,
+    ) -> str:
+        if legal_form_filter:
+            return f"legal_form:{canonicalize_qkb_legal_form(legal_form_filter) or legal_form_filter.strip()}"
+        return nipt or "all"
 
     def _count_records(self, parsed_response: Any) -> int:
         if isinstance(parsed_response, list):
@@ -632,12 +719,13 @@ class QkbSearchCollector(CollectorBase):
         requested_data_nga: date,
         requested_data_ne: date,
         restart: bool,
+        run_mode: str = RUN_MODE_DAILY_RANGE,
     ) -> _DailyRunStart:
         existing_runs = db.scalars(
             select(QkbSearchRun)
             .where(
                 QkbSearchRun.collector_name == self.source_name,
-                QkbSearchRun.mode == RUN_MODE_DAILY_RANGE,
+                QkbSearchRun.mode == run_mode,
                 QkbSearchRun.date_from == requested_data_nga,
                 QkbSearchRun.date_to == requested_data_ne,
                 QkbSearchRun.status.in_(UNFINISHED_RUN_STATUSES),
@@ -655,7 +743,7 @@ class QkbSearchCollector(CollectorBase):
             )
             run = QkbSearchRun(
                 collector_name=self.source_name,
-                mode=RUN_MODE_DAILY_RANGE,
+                mode=run_mode,
                 date_from=requested_data_nga,
                 date_to=requested_data_ne,
                 current_date=requested_data_nga,
@@ -703,7 +791,7 @@ class QkbSearchCollector(CollectorBase):
 
         run = QkbSearchRun(
             collector_name=self.source_name,
-            mode=RUN_MODE_DAILY_RANGE,
+            mode=run_mode,
             date_from=requested_data_nga,
             date_to=requested_data_ne,
             current_date=requested_data_nga,
