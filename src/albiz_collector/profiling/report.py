@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterable
 from typing import Any
 
@@ -14,6 +15,7 @@ from ..models import (
     NormalizedQkbSearchRow,
     QkbCompanyFeature,
 )
+from ..qkb_legal_forms import SHPK_CANONICAL_LEGAL_FORM, canonicalize_qkb_legal_form
 from ..utils.raw_fetches import exclude_corrupted_raw_fetches
 
 
@@ -65,6 +67,32 @@ def _distinct_identifiers(values: Iterable[str | None]) -> set[str]:
 
 def _row_count_profile(rows: list[Any], dataset_name: str) -> dict[str, Any]:
     return {"dataset": dataset_name, "row_count": len(rows)}
+
+
+def _raw_legal_form_label(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _counter_profiles(
+    counter: Counter[str | None],
+    *,
+    key_name: str,
+    total: int,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            key_name: value,
+            "count": count,
+            "rate": _rate(count, total),
+        }
+        for value, count in sorted(
+            counter.items(),
+            key=lambda item: (-item[1], "" if item[0] is None else str(item[0])),
+        )
+    ]
 
 
 def _feature_field_profiles(rows: list[Any], feature_definitions: tuple[FeatureDefinition, ...]) -> dict[str, Any]:
@@ -190,6 +218,53 @@ def profile_normalized_data(db: Session) -> dict[str, Any]:
         },
     }
     return result
+
+
+def profile_qkb_legal_forms(db: Session) -> dict[str, Any]:
+    rows = db.scalars(
+        exclude_corrupted_raw_fetches(
+            select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.id),
+            NormalizedQkbSearchRow,
+        )
+    ).all()
+
+    raw_counts: Counter[str | None] = Counter()
+    canonical_counts: Counter[str | None] = Counter()
+    shpk_count = 0
+
+    for row in rows:
+        raw_legal_form = _raw_legal_form_label(row.legal_form)
+        canonical_legal_form = canonicalize_qkb_legal_form(row.legal_form)
+        raw_counts[raw_legal_form] += 1
+        canonical_counts[canonical_legal_form] += 1
+        if canonical_legal_form == SHPK_CANONICAL_LEGAL_FORM:
+            shpk_count += 1
+
+    total_rows = len(rows)
+    non_shpk_count = total_rows - shpk_count
+
+    return {
+        "dataset": "normalized_qkb_search_rows",
+        "source": "local_database",
+        "network_calls_made": False,
+        "total_rows": total_rows,
+        "distinct_business_nipts": len(_distinct_identifiers(row.business_nipt for row in rows)),
+        "missing_legal_form_count": raw_counts.get(None, 0),
+        "shpk_count": shpk_count,
+        "non_shpk_count": non_shpk_count,
+        "shpk_rate": _rate(shpk_count, total_rows),
+        "non_shpk_rate": _rate(non_shpk_count, total_rows),
+        "raw_legal_form_counts": _counter_profiles(
+            raw_counts,
+            key_name="raw_legal_form",
+            total=total_rows,
+        ),
+        "canonical_legal_form_counts": _counter_profiles(
+            canonical_counts,
+            key_name="canonical_legal_form",
+            total=total_rows,
+        ),
+    }
 
 
 def profile_feature_data(db: Session) -> dict[str, Any]:

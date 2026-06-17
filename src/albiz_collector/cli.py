@@ -16,7 +16,7 @@ from .features import (
     materialize_qkb_features,
 )
 from .normalization import materialize_all, materialize_app_exports, materialize_qkb_search
-from .profiling import profile_all_data, profile_feature_data, profile_normalized_data
+from .profiling import profile_all_data, profile_feature_data, profile_normalized_data, profile_qkb_legal_forms
 from .scheduler import start_scheduler
 from .smoke import run_app_source_contract_smoke_check, run_qkb_search_source_contract_smoke_check
 from .sources.app_exports import AppExportsCollector
@@ -233,6 +233,13 @@ def profile_features_command() -> None:
 def profile_all_command() -> None:
     with SessionLocal() as db:
         result = profile_all_data(db)
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@profile_app.command("qkb-legal-forms")
+def profile_qkb_legal_forms_command() -> None:
+    with SessionLocal() as db:
+        result = profile_qkb_legal_forms(db)
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 
