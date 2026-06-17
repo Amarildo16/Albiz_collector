@@ -6,6 +6,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
+from html.parser import HTMLParser
 from typing import Any
 
 from sqlalchemy import select
@@ -61,9 +62,58 @@ class _DailyRunStart:
     days_previously_completed_before_run: int
 
 
+class _SelectOptionParser(HTMLParser):
+    def __init__(self, field_names: tuple[str, ...]) -> None:
+        super().__init__(convert_charrefs=True)
+        self._field_names = set(field_names)
+        self._current_select_name: str | None = None
+        self._current_option_value: str | None = None
+        self._current_option_label_parts: list[str] = []
+        self.options_by_field: dict[str, list[dict[str, str]]] = {
+            field_name: [] for field_name in field_names
+        }
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = dict(attrs)
+        if tag == "select":
+            select_name = attr_map.get("name") or attr_map.get("id")
+            self._current_select_name = select_name if select_name in self._field_names else None
+            return
+
+        if tag == "option" and self._current_select_name is not None:
+            self._current_option_value = attr_map.get("value") or ""
+            self._current_option_label_parts = []
+
+    def handle_data(self, data: str) -> None:
+        if self._current_select_name is not None and self._current_option_value is not None:
+            self._current_option_label_parts.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "option" and self._current_select_name is not None and self._current_option_value is not None:
+            value = self._current_option_value.strip()
+            label = " ".join("".join(self._current_option_label_parts).split())
+            if value:
+                existing_values = {
+                    option["value"] for option in self.options_by_field[self._current_select_name]
+                }
+                if value not in existing_values:
+                    self.options_by_field[self._current_select_name].append(
+                        {"value": value, "label": label or value}
+                    )
+            self._current_option_value = None
+            self._current_option_label_parts = []
+            return
+
+        if tag == "select":
+            self._current_select_name = None
+            self._current_option_value = None
+            self._current_option_label_parts = []
+
+
 class QkbSearchCollector(CollectorBase):
     source_name = "qkb_search"
     DAILY_RESULT_LIMIT = 50
+    SECONDARY_CHUNK_FIELD_PREFERENCES = ("qarku", "qyteti")
 
     @staticmethod
     def _format_form_date(value: date | None) -> str:
@@ -200,6 +250,112 @@ class QkbSearchCollector(CollectorBase):
             "results": per_legal_form_results,
         }
 
+    def probe_secondary_chunks(
+        self,
+        *,
+        probe_date: date,
+        forme_ligjore: str,
+        secondary_field_preferences: tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        legal_form_filter = resolve_qkb_legal_form_filter(forme_ligjore)
+        canonical_legal_form = canonicalize_qkb_legal_form(legal_form_filter)
+        field_preferences = secondary_field_preferences or self.SECONDARY_CHUNK_FIELD_PREFERENCES
+
+        with self._http_client() as http:
+            initial_response = http.get(settings.qkb_search_url)
+            session_cookies = initial_response.cookies
+            search_form_text = initial_response.text or initial_response.content.decode(
+                "utf-8", errors="replace"
+            )
+            secondary_filter_candidates = self._extract_secondary_filter_candidates(
+                search_form_text,
+                field_preferences=field_preferences,
+            )
+            selected_filter = secondary_filter_candidates[0] if secondary_filter_candidates else None
+
+            baseline_result = self._probe_single_secondary_chunk(
+                http,
+                session_cookies=session_cookies,
+                probe_date=probe_date,
+                legal_form_filter=legal_form_filter,
+                secondary_filter_field_name=None,
+                secondary_filter_value=None,
+                secondary_filter_label=None,
+            )
+
+            per_filter_results: list[dict[str, Any]] = []
+            if selected_filter is not None:
+                for option in selected_filter["options"]:
+                    per_filter_results.append(
+                        self._probe_single_secondary_chunk(
+                            http,
+                            session_cookies=session_cookies,
+                            probe_date=probe_date,
+                            legal_form_filter=legal_form_filter,
+                            secondary_filter_field_name=selected_filter["field_name"],
+                            secondary_filter_value=option["value"],
+                            secondary_filter_label=option["label"],
+                        )
+                    )
+
+        total_rows_across_chunks = sum(
+            result["records_found"]
+            for result in per_filter_results
+            if isinstance(result["records_found"], int)
+        )
+        potentially_truncated_results = [
+            result for result in per_filter_results if result["potentially_truncated"]
+        ]
+        failed_results = [
+            result for result in per_filter_results if result["status"] != "ok"
+        ]
+        unique_nipts = self._dedupe_preserving_order(
+            nipt
+            for result in per_filter_results
+            for nipt in result.get("business_nipts", [])
+        )
+
+        return {
+            "source_name": self.source_name,
+            "mode": "http",
+            "probe_type": "qkb_secondary_chunk_probe",
+            "persistence": "none",
+            "date": probe_date.isoformat(),
+            "requested_legal_form": forme_ligjore,
+            "resolved_legal_form_filter": legal_form_filter,
+            "canonical_legal_form_filter": canonical_legal_form,
+            "baseline_records_found": baseline_result["records_found"],
+            "baseline_potentially_truncated": baseline_result["potentially_truncated"],
+            "baseline_result": baseline_result,
+            "discovered_secondary_filter_fields": [
+                {
+                    "field_name": candidate["field_name"],
+                    "option_count": len(candidate["options"]),
+                }
+                for candidate in secondary_filter_candidates
+            ],
+            "candidate_secondary_filter_field_name": (
+                selected_filter["field_name"] if selected_filter is not None else None
+            ),
+            "candidate_secondary_filter_values_tested": len(per_filter_results),
+            "total_requests_executed": 1 + len(per_filter_results),
+            "successful_requests": 1 + len(per_filter_results) - len(failed_results),
+            "failed_requests": len(failed_results),
+            "total_rows_across_chunks_before_dedupe": total_rows_across_chunks,
+            "unique_business_nipt_count_across_chunks": len(unique_nipts),
+            "unique_business_nipts_across_chunks": unique_nipts,
+            "secondary_chunks_returning_exactly_50_results": len(potentially_truncated_results),
+            "potentially_truncated_secondary_filter_values": [
+                result["secondary_filter_value"] for result in potentially_truncated_results
+            ],
+            "secondary_chunking_appears_sufficient": (
+                selected_filter is not None
+                and not failed_results
+                and not potentially_truncated_results
+            ),
+            "results": per_filter_results,
+        }
+
     def _probe_single_legal_form_chunk(
         self,
         http: HttpClient,
@@ -241,6 +397,76 @@ class QkbSearchCollector(CollectorBase):
                 "canonical_legal_form": canonicalize_qkb_legal_form(legal_form_filter),
                 "records_found": None,
                 "potentially_truncated": False,
+                "status_code": response.status_code if response is not None else None,
+                "content_type": response.content_type if response is not None else None,
+                "url": response.url if response is not None else None,
+                "error": str(exc),
+            }
+
+    def _probe_single_secondary_chunk(
+        self,
+        http: HttpClient,
+        *,
+        session_cookies: Any,
+        probe_date: date,
+        legal_form_filter: str | None,
+        secondary_filter_field_name: str | None,
+        secondary_filter_value: str | None,
+        secondary_filter_label: str | None,
+    ) -> dict[str, Any]:
+        secondary_filters = (
+            {secondary_filter_field_name: secondary_filter_value}
+            if secondary_filter_field_name is not None and secondary_filter_value is not None
+            else None
+        )
+        form_data = self._build_form_data(
+            data_nga=probe_date,
+            data_ne=probe_date,
+            legal_form=legal_form_filter,
+            secondary_filters=secondary_filters,
+        )
+        response: ResponsePayload | None = None
+        try:
+            response = self._execute_search_request(
+                http,
+                session_cookies=session_cookies,
+                form_data=form_data,
+            )
+            page_text = response.content.decode("utf-8", errors="replace")
+            parsed_response = self._extract_response_from_page(page_text)
+            records = self._extract_response_records(parsed_response)
+            business_nipts = self._extract_business_nipts(records)
+            records_found = len(records)
+            return {
+                "status": "ok",
+                "date": probe_date.isoformat(),
+                "legal_form_filter": legal_form_filter,
+                "canonical_legal_form": canonicalize_qkb_legal_form(legal_form_filter),
+                "secondary_filter_field_name": secondary_filter_field_name,
+                "secondary_filter_value": secondary_filter_value,
+                "secondary_filter_label": secondary_filter_label,
+                "records_found": records_found,
+                "potentially_truncated": records_found == self.DAILY_RESULT_LIMIT,
+                "business_nipts": business_nipts,
+                "unique_business_nipt_count": len(business_nipts),
+                "status_code": response.status_code,
+                "content_type": response.content_type,
+                "url": response.url,
+                "error": None,
+            }
+        except Exception as exc:
+            return {
+                "status": "failed",
+                "date": probe_date.isoformat(),
+                "legal_form_filter": legal_form_filter,
+                "canonical_legal_form": canonicalize_qkb_legal_form(legal_form_filter),
+                "secondary_filter_field_name": secondary_filter_field_name,
+                "secondary_filter_value": secondary_filter_value,
+                "secondary_filter_label": secondary_filter_label,
+                "records_found": None,
+                "potentially_truncated": False,
+                "business_nipts": [],
+                "unique_business_nipt_count": 0,
                 "status_code": response.status_code if response is not None else None,
                 "content_type": response.content_type if response is not None else None,
                 "url": response.url if response is not None else None,
@@ -569,8 +795,9 @@ class QkbSearchCollector(CollectorBase):
         data_nga: date | None = None,
         data_ne: date | None = None,
         legal_form: str | None = None,
+        secondary_filters: dict[str, str] | None = None,
     ) -> dict[str, str]:
-        return {
+        form_data = {
             "orderColumn": "0",
             "orderDir": "asc",
             "nipt": nipt or "",
@@ -588,6 +815,11 @@ class QkbSearchCollector(CollectorBase):
             "qyteti": "",
             "adresa": "",
         }
+        for field_name, field_value in (secondary_filters or {}).items():
+            if field_name not in form_data:
+                raise ValueError(f"Unsupported QKB search filter field: {field_name}")
+            form_data[field_name] = field_value
+        return form_data
 
     def _build_headers(self) -> dict[str, str]:
         return {
@@ -658,15 +890,54 @@ class QkbSearchCollector(CollectorBase):
         return f"{prefix}{slug[:max_slug_length]}-{digest}"
 
     def _count_records(self, parsed_response: Any) -> int:
-        if isinstance(parsed_response, list):
-            return len(parsed_response)
+        return len(self._extract_response_records(parsed_response))
 
+    @staticmethod
+    def _extract_response_records(parsed_response: Any) -> list[dict[str, Any]]:
+        if isinstance(parsed_response, list):
+            return [item for item in parsed_response if isinstance(item, dict)]
         if isinstance(parsed_response, dict):
             data = parsed_response.get("data")
             if isinstance(data, list):
-                return len(data)
+                return [item for item in data if isinstance(item, dict)]
 
-        return 0
+        return []
+
+    @staticmethod
+    def _extract_business_nipts(records: list[dict[str, Any]]) -> list[str]:
+        return QkbSearchCollector._dedupe_preserving_order(
+            str(record.get("nipti", "")).strip()
+            for record in records
+            if str(record.get("nipti", "")).strip()
+        )
+
+    @staticmethod
+    def _dedupe_preserving_order(values: Any) -> list[str]:
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for value in values:
+            if value in seen:
+                continue
+            seen.add(value)
+            deduped.append(value)
+        return deduped
+
+    @staticmethod
+    def _extract_secondary_filter_candidates(
+        search_form_text: str,
+        *,
+        field_preferences: tuple[str, ...],
+    ) -> list[dict[str, Any]]:
+        parser = _SelectOptionParser(field_preferences)
+        parser.feed(search_form_text)
+        return [
+            {
+                "field_name": field_name,
+                "options": parser.options_by_field[field_name],
+            }
+            for field_name in field_preferences
+            if parser.options_by_field.get(field_name)
+        ]
 
     def _extract_response_from_page(self, page_content: str) -> Any:
         parsed_patterns = [

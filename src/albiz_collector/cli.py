@@ -149,6 +149,28 @@ def run_experimental_qkb_legal_form_chunk_probe(
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 
+@experimental_app.command("qkb-secondary-chunk-probe")
+def run_experimental_qkb_secondary_chunk_probe(
+    probe_date: Annotated[str, typer.Option("--date", help="Single QKB registration date YYYY-MM-DD")],
+    forme_ligjore: Annotated[
+        str,
+        typer.Option(
+            "--forme-ligjore",
+            help="QKB legal-form filter to probe, for example SHPK, SHA, Person Fizik, or a raw QKB value",
+        ),
+    ],
+) -> None:
+    parsed_probe_date = _parse_date_option(probe_date, "--date")
+    if parsed_probe_date is None:
+        raise typer.BadParameter("--date is required")
+
+    result = QkbSearchCollector().probe_secondary_chunks(
+        probe_date=parsed_probe_date,
+        forme_ligjore=forme_ligjore,
+    )
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
 @run_app.command("qkb-search")
 def run_qkb_search(
     nipt: Annotated[str | None, typer.Option("--nipt", help="Filter by NIPT")] = None,
