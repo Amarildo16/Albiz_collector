@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import unittest
 from datetime import date
 from unittest.mock import patch
@@ -19,6 +20,13 @@ from albiz_collector.qkb_legal_forms import (
 from albiz_collector.sources.qkb_search import QkbSearchCollector, RUN_STATUS_COMPLETED, RUN_STATUS_FAILED
 from albiz_collector.utils.http import ResponsePayload
 from tests.support import isolated_db_environment
+
+
+ANSI_ESCAPE_RE = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def _clean_cli_help(output: str) -> str:
+    return " ".join(ANSI_ESCAPE_RE.sub("", output).split())
 
 
 def _build_html(records: list[dict[str, str]]) -> bytes:
@@ -317,10 +325,12 @@ class QkbSearchLegalFormFilterTests(unittest.TestCase):
 
         self.assertEqual(run_help.exit_code, 0, run_help.stdout)
         self.assertEqual(qkb_help.exit_code, 0, qkb_help.stdout)
-        self.assertIn("qkb-search", run_help.stdout)
-        self.assertNotIn("qkb-shpk-registry", run_help.stdout)
-        self.assertNotIn("qkb-shpk-universe", run_help.stdout)
-        self.assertIn("forme-ligjore", qkb_help.stdout)
+        run_help_text = _clean_cli_help(run_help.stdout)
+        qkb_help_text = _clean_cli_help(qkb_help.stdout)
+        self.assertIn("qkb-search", run_help_text)
+        self.assertNotIn("qkb-shpk-registry", run_help_text)
+        self.assertNotIn("qkb-shpk-universe", run_help_text)
+        self.assertIn("forme-ligjore", qkb_help_text)
 
     def test_cli_qkb_search_passes_forme_ligjore_to_collector(self) -> None:
         runner = CliRunner()
