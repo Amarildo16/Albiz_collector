@@ -4,8 +4,12 @@ import re
 import unicodedata
 
 SHPK_CANONICAL_LEGAL_FORM = "SHPK"
+SHA_CANONICAL_LEGAL_FORM = "SHA"
+QKB_SHPK_LEGAL_FORM_VALUE = "Shoqeri me pergjegjesi te kufizuar"
+QKB_SHA_LEGAL_FORM_VALUE = "Shoqeri aksionare"
 
 _SHPK_LONG_FORM = "SHOQERI ME PERGJEGJESI TE KUFIZUAR"
+_SHA_LONG_FORM = "SHOQERI AKSIONARE"
 
 
 def canonicalize_qkb_legal_form(value: str | None) -> str | None:
@@ -17,8 +21,27 @@ def canonicalize_qkb_legal_form(value: str | None) -> str | None:
     compact = re.sub(r"[^A-Z0-9]+", "", normalized)
     if compact == SHPK_CANONICAL_LEGAL_FORM or normalized == _SHPK_LONG_FORM:
         return SHPK_CANONICAL_LEGAL_FORM
+    if compact == SHA_CANONICAL_LEGAL_FORM or normalized == _SHA_LONG_FORM:
+        return SHA_CANONICAL_LEGAL_FORM
 
     return normalized
+
+
+def resolve_qkb_legal_form_filter(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    raw_value = value.strip()
+    if not raw_value:
+        return None
+
+    canonical = canonicalize_qkb_legal_form(raw_value)
+    if canonical == SHPK_CANONICAL_LEGAL_FORM:
+        return QKB_SHPK_LEGAL_FORM_VALUE
+    if canonical == SHA_CANONICAL_LEGAL_FORM:
+        return QKB_SHA_LEGAL_FORM_VALUE
+
+    return raw_value
 
 
 def normalize_qkb_legal_form_text(value: str | None) -> str | None:

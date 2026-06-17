@@ -154,6 +154,13 @@ def run_qkb_search(
     nipt: Annotated[str | None, typer.Option("--nipt", help="Filter by NIPT")] = None,
     data_nga: Annotated[str | None, typer.Option("--data-nga", help="Registration start date YYYY-MM-DD")] = None,
     data_ne: Annotated[str | None, typer.Option("--data-ne", help="Registration end date YYYY-MM-DD")] = None,
+    forme_ligjore: Annotated[
+        str | None,
+        typer.Option(
+            "--forme-ligjore",
+            help="Optional QKB legal-form filter, for example SHPK, SHA, Person Fizik, or a raw QKB legal-form value",
+        ),
+    ] = None,
     restart: Annotated[
         bool,
         typer.Option(
@@ -173,33 +180,7 @@ def run_qkb_search(
             nipt=nipt,
             data_nga=parsed_data_nga,
             data_ne=parsed_data_ne,
-            restart=restart,
-        )
-    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
-
-
-@run_app.command("qkb-shpk-universe")
-def run_qkb_shpk_universe(
-    data_nga: Annotated[str, typer.Option("--data-nga", help="Registration start date YYYY-MM-DD")],
-    data_ne: Annotated[str, typer.Option("--data-ne", help="Registration end date YYYY-MM-DD")],
-    restart: Annotated[
-        bool,
-        typer.Option(
-            "--restart",
-            help="Restart a resumable qkb-shpk-universe date-range run from the beginning instead of resuming saved progress",
-        ),
-    ] = False,
-) -> None:
-    parsed_data_nga = _parse_date_option(data_nga, "--data-nga")
-    parsed_data_ne = _parse_date_option(data_ne, "--data-ne")
-    if parsed_data_nga is None or parsed_data_ne is None:
-        raise typer.BadParameter("--data-nga and --data-ne are required")
-
-    with SessionLocal() as db:
-        result = QkbSearchCollector().collect_shpk_universe(
-            db,
-            data_nga=parsed_data_nga,
-            data_ne=parsed_data_ne,
+            forme_ligjore=forme_ligjore,
             restart=restart,
         )
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
