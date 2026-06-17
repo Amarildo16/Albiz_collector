@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import QkbSearchRun
+from ..qkb_legal_forms import canonicalize_qkb_legal_form
 from ..utils.http import HttpClient, ResponsePayload
 from ..utils.time import utc_now_naive
 from .base import CollectorBase
@@ -30,6 +31,19 @@ RUN_MODE_DAILY_RANGE = "daily_range"
 RUN_START_BEHAVIOR_NEW = "starting_new"
 RUN_START_BEHAVIOR_RESUMED = "resuming_existing"
 RUN_START_BEHAVIOR_RESTARTED = "restarting_from_scratch"
+QKB_LEGAL_FORM_FILTER_VALUES = (
+    "Person Fizik",
+    "Shoqeri me pergjegjesi te kufizuar",
+    "Shoqeri aksionare",
+    "Dege e Shoqerise se huaj",
+    "Shoqeri Kolektive",
+    "Shoqeri e Thjeshte",
+    "Shoqeri Komandite",
+    "Shoqeri Kursim Krediti",
+    "Shoqeri Bashkeveprim Reciprok",
+    "Shoqeri e Bashkepunimit Bujqesor",
+    "Shoqeri Aksionare me Oferte Publike",
+)
 
 
 @dataclass(frozen=True)
@@ -116,6 +130,109 @@ class QkbSearchCollector(CollectorBase):
             "unique_external_keys": [single_result["external_key"]],
             "per_day_summaries": [],
         }
+
+    def probe_legal_form_chunks(
+        self,
+        *,
+        probe_date: date,
+        legal_form_filters: tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        filters = legal_form_filters or QKB_LEGAL_FORM_FILTER_VALUES
+        per_legal_form_results: list[dict[str, Any]] = []
+
+        with self._http_client() as http:
+            session_cookies = self._establish_search_session(http)
+            for legal_form_filter in filters:
+                per_legal_form_results.append(
+                    self._probe_single_legal_form_chunk(
+                        http,
+                        session_cookies=session_cookies,
+                        probe_date=probe_date,
+                        legal_form_filter=legal_form_filter,
+                    )
+                )
+
+        total_raw_rows_found = sum(
+            result["records_found"]
+            for result in per_legal_form_results
+            if isinstance(result["records_found"], int)
+        )
+        potentially_truncated_results = [
+            result
+            for result in per_legal_form_results
+            if result["potentially_truncated"]
+        ]
+        failed_results = [
+            result
+            for result in per_legal_form_results
+            if result["status"] != "ok"
+        ]
+
+        return {
+            "source_name": self.source_name,
+            "mode": "http",
+            "probe_type": "qkb_legal_form_chunk_probe",
+            "persistence": "none",
+            "probe_date": probe_date.isoformat(),
+            "total_requests_executed": len(per_legal_form_results),
+            "successful_requests": len(per_legal_form_results) - len(failed_results),
+            "failed_requests": len(failed_results),
+            "total_raw_rows_found": total_raw_rows_found,
+            "legal_forms_returning_exactly_50_results": len(potentially_truncated_results),
+            "potentially_truncated_legal_forms": [
+                result["legal_form_filter"]
+                for result in potentially_truncated_results
+            ],
+            "legal_form_chunking_appears_sufficient": not failed_results and not potentially_truncated_results,
+            "results": per_legal_form_results,
+        }
+
+    def _probe_single_legal_form_chunk(
+        self,
+        http: HttpClient,
+        *,
+        session_cookies: Any,
+        probe_date: date,
+        legal_form_filter: str,
+    ) -> dict[str, Any]:
+        form_data = self._build_form_data(
+            data_nga=probe_date,
+            data_ne=probe_date,
+            legal_form=legal_form_filter,
+        )
+        response: ResponsePayload | None = None
+        try:
+            response = self._execute_search_request(
+                http,
+                session_cookies=session_cookies,
+                form_data=form_data,
+            )
+            page_text = response.content.decode("utf-8", errors="replace")
+            parsed_response = self._extract_response_from_page(page_text)
+            records_found = self._count_records(parsed_response)
+            return {
+                "status": "ok",
+                "legal_form_filter": legal_form_filter,
+                "canonical_legal_form": canonicalize_qkb_legal_form(legal_form_filter),
+                "records_found": records_found,
+                "potentially_truncated": records_found == self.DAILY_RESULT_LIMIT,
+                "status_code": response.status_code,
+                "content_type": response.content_type,
+                "url": response.url,
+                "error": None,
+            }
+        except Exception as exc:
+            return {
+                "status": "failed",
+                "legal_form_filter": legal_form_filter,
+                "canonical_legal_form": canonicalize_qkb_legal_form(legal_form_filter),
+                "records_found": None,
+                "potentially_truncated": False,
+                "status_code": response.status_code if response is not None else None,
+                "content_type": response.content_type if response is not None else None,
+                "url": response.url if response is not None else None,
+                "error": str(exc),
+            }
 
     def _collect_daily_range(
         self,
@@ -398,6 +515,7 @@ class QkbSearchCollector(CollectorBase):
         nipt: str | None = None,
         data_nga: date | None = None,
         data_ne: date | None = None,
+        legal_form: str | None = None,
     ) -> dict[str, str]:
         return {
             "orderColumn": "0",
@@ -405,7 +523,7 @@ class QkbSearchCollector(CollectorBase):
             "nipt": nipt or "",
             "emriISubjektit": "",
             "emriTregtar": "",
-            "formeLigjore": "",
+            "formeLigjore": legal_form or "",
             "pronesia": "",
             "dataNga": self._format_form_date(data_nga),
             "dataNe": self._format_form_date(data_ne),

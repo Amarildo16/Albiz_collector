@@ -137,6 +137,18 @@ def run_experimental_qkb_document_fetch_one(
     typer.echo(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
 
 
+@experimental_app.command("qkb-legal-form-chunk-probe")
+def run_experimental_qkb_legal_form_chunk_probe(
+    probe_date: Annotated[str, typer.Option("--date", help="Single QKB registration date YYYY-MM-DD")],
+) -> None:
+    parsed_probe_date = _parse_date_option(probe_date, "--date")
+    if parsed_probe_date is None:
+        raise typer.BadParameter("--date is required")
+
+    result = QkbSearchCollector().probe_legal_form_chunks(probe_date=parsed_probe_date)
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
 @run_app.command("qkb-search")
 def run_qkb_search(
     nipt: Annotated[str | None, typer.Option("--nipt", help="Filter by NIPT")] = None,
