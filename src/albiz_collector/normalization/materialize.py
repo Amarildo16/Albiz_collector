@@ -11,6 +11,7 @@ from ..models import (
     RawFetch,
     StructuredRecord,
 )
+from ..qkb_legal_forms import canonicalize_qkb_legal_form
 from ..utils.raw_fetches import assert_raw_fetch_is_trusted
 from ..utils.storage import read_storage_bytes
 from .app_exports import build_normalized_app_export_rows
@@ -50,6 +51,71 @@ def _raw_fetch_for_snapshot(db: Session, record: StructuredRecord) -> RawFetch:
     except ValueError as exc:
         raise CorruptedRawFetchError(str(exc)) from exc
     return raw_fetch
+
+
+def _qkb_snapshot_identity(record: StructuredRecord) -> tuple[str, str, str] | None:
+    payload = record.payload or {}
+    nipt = payload.get("nipt")
+    if nipt:
+        return None
+
+    legal_form = (
+        payload.get("canonical_legal_form_filter")
+        or canonicalize_qkb_legal_form(payload.get("legal_form_filter"))
+    )
+    data_nga = payload.get("data_nga")
+    data_ne = payload.get("data_ne")
+
+    if legal_form and data_nga and data_ne:
+        return (str(legal_form), str(data_nga), str(data_ne))
+
+    external_key = record.external_key or ""
+    parts = external_key.split("|")
+    if len(parts) < 3:
+        return None
+
+    subject_parts = parts[:-2]
+    if any(not part.startswith(("legal_form:", "qarku:")) for part in subject_parts):
+        return None
+
+    legal_form_parts = [part for part in subject_parts if part.startswith("legal_form:")]
+    if len(legal_form_parts) != 1:
+        return None
+
+    return (
+        legal_form_parts[0].removeprefix("legal_form:"),
+        parts[-2],
+        parts[-1],
+    )
+
+
+def _qkb_snapshot_has_qarku_filter(record: StructuredRecord) -> bool:
+    payload = record.payload or {}
+    secondary_filters = payload.get("secondary_filters")
+    if isinstance(secondary_filters, dict) and secondary_filters.get("qarku"):
+        return True
+    return any(part.startswith("qarku:") for part in (record.external_key or "").split("|"))
+
+
+def _superseded_qkb_baseline_snapshot_ids(records: list[StructuredRecord]) -> set[int]:
+    qarku_chunk_keys: set[tuple[str, str, str]] = set()
+    baseline_ids_by_key: dict[tuple[str, str, str], list[int]] = {}
+
+    for record in records:
+        identity = _qkb_snapshot_identity(record)
+        if identity is None:
+            continue
+
+        if _qkb_snapshot_has_qarku_filter(record):
+            qarku_chunk_keys.add(identity)
+        else:
+            baseline_ids_by_key.setdefault(identity, []).append(record.id)
+
+    return {
+        record_id
+        for identity in qarku_chunk_keys
+        for record_id in baseline_ids_by_key.get(identity, [])
+    }
 
 
 def materialize_app_exports(db: Session) -> dict[str, Any]:
@@ -104,9 +170,28 @@ def materialize_qkb_search(db: Session) -> dict[str, Any]:
     ).all()
 
     stats = _base_stats("qkb_search", records)
+    stats["snapshots_skipped_superseded"] = 0
+    superseded_baseline_snapshot_ids = _superseded_qkb_baseline_snapshot_ids(records)
 
     for record in records:
         try:
+            if record.id in superseded_baseline_snapshot_ids:
+                delete_result = db.execute(
+                    delete(NormalizedQkbSearchRow).where(
+                        NormalizedQkbSearchRow.structured_record_id == record.id
+                    )
+                )
+                db.commit()
+                stats["snapshots_skipped_superseded"] += 1
+                stats["rows_deleted_before_insert"] += delete_result.rowcount or 0
+                stats["skipped"].append(
+                    {
+                        "structured_record_id": record.id,
+                        "reason": "superseded by qarku chunk snapshots for the same legal form/date",
+                    }
+                )
+                continue
+
             raw_fetch = _raw_fetch_for_snapshot(db, record)
             normalized_rows = build_normalized_qkb_search_rows(record)
             for row in normalized_rows:

@@ -229,6 +229,97 @@ class QkbSearchNormalizationTests(unittest.TestCase):
             self.assertEqual(normalized_rows, [])
             self.assertIn("marked corrupted: content_hash mismatch", stats["skipped"][0]["reason"])
 
+    def test_materialize_qkb_search_skips_superseded_legal_form_baseline_when_qarku_chunks_exist(self) -> None:
+        payload = json.loads(
+            fixture_path("normalization", "qkb_search_snapshot_payload.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        baseline_payload = {
+            **payload,
+            "nipt": None,
+            "legal_form_filter": "Shoqeri me pergjegjesi te kufizuar",
+            "canonical_legal_form_filter": "SHPK",
+            "secondary_filters": {},
+            "data_nga": "2026-05-29",
+            "data_ne": "2026-05-29",
+        }
+        qarku_payload = {
+            **baseline_payload,
+            "secondary_filters": {"qarku": "tirane"},
+            "secondary_filter_labels": {"qarku": "Tirane"},
+            "response": [payload["response"][0]],
+        }
+        collector = _QkbTestCollector()
+
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            with session_factory() as db:
+                baseline_raw_fetch = collector.save_raw_fetch(
+                    db,
+                    url="https://format.qkb.gov.al/kerko-per-subjekt/",
+                    content=b"<html>baseline</html>",
+                    fetch_kind="search_results_page",
+                    status_code=200,
+                    content_type="text/html",
+                    filename="qkb-search-baseline.html",
+                    extra_metadata={},
+                )
+                baseline_record = StructuredRecord(
+                    source_name="qkb_search",
+                    record_type="qkb_search_snapshot",
+                    external_key="legal_form:SHPK|2026-05-29|2026-05-29",
+                    title="QKB search snapshot legal_form:SHPK|2026-05-29|2026-05-29",
+                    source_url="https://format.qkb.gov.al/kerko-per-subjekt/",
+                    content_hash="baseline-hash",
+                    payload={**baseline_payload, "raw_fetch_id": baseline_raw_fetch.id},
+                )
+                db.add(baseline_record)
+                db.commit()
+
+                first_stats = materialize_qkb_search(db)
+                first_rows = db.scalars(select(NormalizedQkbSearchRow)).all()
+                baseline_record_id = baseline_record.id
+                db.expunge_all()
+
+                qarku_raw_fetch = collector.save_raw_fetch(
+                    db,
+                    url="https://format.qkb.gov.al/kerko-per-subjekt/",
+                    content=b"<html>qarku</html>",
+                    fetch_kind="search_results_page",
+                    status_code=200,
+                    content_type="text/html",
+                    filename="qkb-search-qarku.html",
+                    extra_metadata={},
+                )
+                qarku_record = StructuredRecord(
+                    source_name="qkb_search",
+                    record_type="qkb_search_snapshot",
+                    external_key="legal_form:SHPK|qarku:TIRANE|2026-05-29|2026-05-29",
+                    title="QKB search snapshot legal_form:SHPK|qarku:TIRANE|2026-05-29|2026-05-29",
+                    source_url="https://format.qkb.gov.al/kerko-per-subjekt/",
+                    content_hash="qarku-hash",
+                    payload={**qarku_payload, "raw_fetch_id": qarku_raw_fetch.id},
+                )
+                db.add(qarku_record)
+                db.commit()
+
+                second_stats = materialize_qkb_search(db)
+                second_rows = db.scalars(
+                    select(NormalizedQkbSearchRow).order_by(NormalizedQkbSearchRow.snapshot_external_key)
+                ).all()
+
+        self.assertEqual(first_stats["snapshots_materialized"], 1)
+        self.assertEqual(len(first_rows), 2)
+        self.assertEqual(second_stats["snapshots_skipped_superseded"], 1)
+        self.assertEqual(second_stats["rows_deleted_before_insert"], 2)
+        self.assertEqual(second_stats["rows_inserted"], 1)
+        self.assertEqual(len(second_rows), 1)
+        self.assertEqual(second_rows[0].snapshot_external_key, "legal_form:SHPK|qarku:TIRANE|2026-05-29|2026-05-29")
+        self.assertNotEqual(second_rows[0].structured_record_id, baseline_record_id)
+        self.assertIn("superseded by qarku chunk snapshots", second_stats["skipped"][0]["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()
