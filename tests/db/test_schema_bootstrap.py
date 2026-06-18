@@ -37,6 +37,8 @@ class SchemaBootstrapTests(unittest.TestCase):
         self.assertIn("active_procurement_count", app_feature_columns)
         self.assertIn("safe_winner_to_budget_ratio_avg", app_feature_columns)
         self.assertIn("purchase_tickets_count", app_feature_columns)
+        self.assertIn("authority_hhi", app_feature_columns)
+        self.assertIn("max_yoy_value_growth_ratio", app_feature_columns)
         self.assertIn("source_row_count", joined_feature_columns)
         self.assertIn("active_procurement_count", joined_feature_columns)
         self.assertIn("registration_year", joined_feature_columns)

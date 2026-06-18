@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
@@ -78,6 +78,84 @@ def _average_decimal(values: list[Decimal]) -> Decimal | None:
     return _ratio_decimal(sum(values, Decimal("0")), Decimal(len(values)))
 
 
+def _concentration_features(rows: list[Any], field_name: str) -> dict[str, Any]:
+    values = [
+        value.strip()
+        for row in rows
+        if isinstance((value := getattr(row, field_name)), str) and value.strip()
+    ]
+    if not values:
+        return {
+            "top_value": None,
+            "top_count": 0,
+            "top_share": None,
+            "hhi": None,
+        }
+
+    counts = Counter(values)
+    total = Decimal(len(values))
+    top_value, top_count = sorted(
+        counts.items(),
+        key=lambda item: (-item[1], item[0].lower(), item[0]),
+    )[0]
+    top_share = _ratio_decimal(Decimal(top_count), total)
+    hhi = sum(
+        (Decimal(count) / total) * (Decimal(count) / total)
+        for count in counts.values()
+    ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+    return {
+        "top_value": top_value,
+        "top_count": top_count,
+        "top_share": top_share,
+        "hhi": hhi,
+    }
+
+
+def _yoy_jump_features(rows: list[NormalizedAppExportRow]) -> dict[str, Any]:
+    yearly: dict[int, dict[str, Any]] = defaultdict(lambda: {"count": 0, "winner_value_sum": Decimal("0")})
+    for row in rows:
+        if row.publication_date is None:
+            continue
+        year_bucket = yearly[row.publication_date.year]
+        year_bucket["count"] += 1
+        year_bucket["winner_value_sum"] += _to_decimal(row.winner_value_amount) or Decimal("0")
+
+    yoy_value_jump_count = 0
+    yoy_contract_count_jump_count = 0
+    value_growth_ratios: list[Decimal] = []
+    contract_count_growth_ratios: list[Decimal] = []
+
+    years = sorted(yearly)
+    for previous_year, current_year in zip(years, years[1:]):
+        if current_year != previous_year + 1:
+            continue
+
+        previous_value = yearly[previous_year]["winner_value_sum"]
+        current_value = yearly[current_year]["winner_value_sum"]
+        if previous_value > 0:
+            value_ratio = _ratio_decimal(current_value, previous_value)
+            value_growth_ratios.append(value_ratio)
+            if value_ratio >= Decimal("3") and current_value - previous_value >= Decimal("100000"):
+                yoy_value_jump_count += 1
+
+        previous_count = yearly[previous_year]["count"]
+        current_count = yearly[current_year]["count"]
+        if previous_count > 0:
+            count_ratio = _ratio_decimal(Decimal(current_count), Decimal(previous_count))
+            contract_count_growth_ratios.append(count_ratio)
+            if count_ratio >= Decimal("3") and current_count - previous_count >= 5:
+                yoy_contract_count_jump_count += 1
+
+    return {
+        "yoy_value_jump_count": yoy_value_jump_count,
+        "yoy_contract_count_jump_count": yoy_contract_count_jump_count,
+        "max_yoy_value_growth_ratio": max(value_growth_ratios) if value_growth_ratios else None,
+        "max_yoy_contract_count_growth_ratio": (
+            max(contract_count_growth_ratios) if contract_count_growth_ratios else None
+        ),
+    }
+
+
 def _latest_non_empty(rows: list[Any], field_name: str) -> str | None:
     for row in rows:
         value = getattr(row, field_name)
@@ -148,18 +226,28 @@ def _build_app_features(rows: list[NormalizedAppExportRow]) -> tuple[list[AppCom
         }
         valid_ratio_values: list[Decimal] = []
         zero_budget_with_winner_value_count = 0
+        near_budget_limit_count = 0
+        winner_value_gt_budget_count = 0
         for row in company_rows:
             budget_value = _to_decimal(row.budget_limit_amount)
             winner_value = _to_decimal(row.winner_value_amount)
             if budget_value == Decimal("0") and winner_value is not None:
                 zero_budget_with_winner_value_count += 1
             if budget_value is not None and budget_value > 0 and winner_value is not None:
+                raw_ratio = winner_value / budget_value
                 valid_ratio_values.append(_ratio_decimal(winner_value, budget_value))
+                if Decimal("0.95") <= raw_ratio <= Decimal("1.00"):
+                    near_budget_limit_count += 1
+                if winner_value > budget_value:
+                    winner_value_gt_budget_count += 1
 
         source_row_count = len(company_rows)
         active_procurement_count = len(active_rows)
         cancelled_procurement_count = len(cancelled_rows)
         suspended_procurement_count = sum(1 for row in company_rows if row.is_suspended is True)
+        authority_concentration = _concentration_features(company_rows, "contracting_authority")
+        procedure_concentration = _concentration_features(company_rows, "procedure_type")
+        yoy_features = _yoy_jump_features(company_rows)
 
         features.append(
             AppCompanyFeature(
@@ -188,6 +276,10 @@ def _build_app_features(rows: list[NormalizedAppExportRow]) -> tuple[list[AppCom
                 safe_winner_to_budget_ratio_avg=_average_decimal(valid_ratio_values),
                 safe_winner_to_budget_ratio_min=min(valid_ratio_values) if valid_ratio_values else None,
                 safe_winner_to_budget_ratio_max=max(valid_ratio_values) if valid_ratio_values else None,
+                near_budget_limit_count=near_budget_limit_count,
+                near_budget_limit_rate=_rate_decimal(near_budget_limit_count, len(valid_ratio_values)),
+                winner_value_gt_budget_count=winner_value_gt_budget_count,
+                winner_value_gt_budget_rate=_rate_decimal(winner_value_gt_budget_count, len(valid_ratio_values)),
                 purchase_tickets_count=len(purchase_tickets_rows),
                 purchase_tickets_total_winner_value=_filtered_decimal_sum(
                     purchase_tickets_rows,
@@ -198,6 +290,18 @@ def _build_app_features(rows: list[NormalizedAppExportRow]) -> tuple[list[AppCom
                 distinct_contracting_authority_count=len(authorities),
                 distinct_procedure_type_count=len(procedure_types),
                 distinct_contract_type_count=len(contract_types),
+                top_authority_name=authority_concentration["top_value"],
+                top_authority_count=authority_concentration["top_count"],
+                top_authority_share=authority_concentration["top_share"],
+                authority_hhi=authority_concentration["hhi"],
+                top_procedure_type=procedure_concentration["top_value"],
+                top_procedure_type_count=procedure_concentration["top_count"],
+                top_procedure_type_share=procedure_concentration["top_share"],
+                procedure_type_hhi=procedure_concentration["hhi"],
+                yoy_value_jump_count=yoy_features["yoy_value_jump_count"],
+                yoy_contract_count_jump_count=yoy_features["yoy_contract_count_jump_count"],
+                max_yoy_value_growth_ratio=yoy_features["max_yoy_value_growth_ratio"],
+                max_yoy_contract_count_growth_ratio=yoy_features["max_yoy_contract_count_growth_ratio"],
                 has_small_value_procedures=any("small value" in value.lower() for value in procedure_types),
                 has_open_local_procedures=any("open local" in value.lower() for value in procedure_types),
                 rows_with_winner_value_count=len(winner_values),

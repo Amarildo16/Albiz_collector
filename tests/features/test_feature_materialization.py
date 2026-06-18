@@ -270,6 +270,158 @@ class FeatureMaterializationTests(unittest.TestCase):
             self.assertEqual(feature.rows_with_budget_count, 3)
             self.assertEqual(feature.rows_with_valid_ratio_count, 2)
 
+    def test_materialize_app_features_builds_procurement_risk_indicators(self) -> None:
+        def app_row(
+            row_ordinal: int,
+            *,
+            authority: str,
+            procedure_type: str,
+            publication_date: date,
+            budget: int,
+            winner_value: int,
+        ) -> NormalizedAppExportRow:
+            return NormalizedAppExportRow(
+                structured_record_id=30,
+                snapshot_external_key="risk-fixture",
+                source_name="app_exports",
+                export_year=publication_date.year,
+                row_ordinal=row_ordinal,
+                procurement_reference=f"RISK-{row_ordinal}",
+                contracting_authority=authority,
+                procedure_type=procedure_type,
+                contract_type="Services",
+                publication_date=publication_date,
+                is_cancelled=False,
+                is_suspended=False,
+                budget_limit_amount=budget,
+                winner_name="Risk Feature Company",
+                winner_nipt="K12345678A",
+                winner_value_amount=winner_value,
+            )
+
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+
+            with session_factory() as db:
+                db.add(
+                    StructuredRecord(
+                        id=30,
+                        source_name="app_exports",
+                        record_type="procurement_export_year",
+                        external_key="risk-fixture",
+                        content_hash="hash-risk",
+                    )
+                )
+                db.flush()
+                db.add_all(
+                    [
+                        app_row(
+                            1,
+                            authority="Authority A",
+                            procedure_type="Open Local",
+                            publication_date=date(2019, 1, 10),
+                            budget=25000,
+                            winner_value=23750,
+                        ),
+                        app_row(
+                            2,
+                            authority="Authority A",
+                            procedure_type="Open Local",
+                            publication_date=date(2019, 2, 10),
+                            budget=25000,
+                            winner_value=26250,
+                        ),
+                        app_row(
+                            3,
+                            authority="Authority A",
+                            procedure_type="Open Local",
+                            publication_date=date(2020, 1, 10),
+                            budget=100000,
+                            winner_value=80000,
+                        ),
+                        app_row(
+                            4,
+                            authority="Authority A",
+                            procedure_type="Open Local",
+                            publication_date=date(2020, 2, 10),
+                            budget=40000,
+                            winner_value=20000,
+                        ),
+                        app_row(
+                            5,
+                            authority="Authority A",
+                            procedure_type="Open Local",
+                            publication_date=date(2020, 3, 10),
+                            budget=40000,
+                            winner_value=20000,
+                        ),
+                        app_row(
+                            6,
+                            authority="Authority A",
+                            procedure_type="Open Local",
+                            publication_date=date(2020, 4, 10),
+                            budget=40000,
+                            winner_value=20000,
+                        ),
+                        app_row(
+                            7,
+                            authority="Authority A",
+                            procedure_type="Small Value",
+                            publication_date=date(2020, 5, 10),
+                            budget=40000,
+                            winner_value=20000,
+                        ),
+                        app_row(
+                            8,
+                            authority="Authority B",
+                            procedure_type="Small Value",
+                            publication_date=date(2020, 6, 10),
+                            budget=40000,
+                            winner_value=20000,
+                        ),
+                        app_row(
+                            9,
+                            authority="Authority B",
+                            procedure_type="Small Value",
+                            publication_date=date(2020, 7, 10),
+                            budget=40000,
+                            winner_value=20000,
+                        ),
+                        app_row(
+                            10,
+                            authority="Authority B",
+                            procedure_type="Negotiated",
+                            publication_date=date(2021, 1, 10),
+                            budget=20000,
+                            winner_value=10000,
+                        ),
+                    ]
+                )
+                db.commit()
+
+                stats = materialize_app_features(db)
+                feature = db.scalars(select(AppCompanyFeature)).one()
+
+        self.assertEqual(stats["rows_materialized"], 1)
+        self.assertEqual(feature.source_row_count, 10)
+        self.assertEqual(feature.rows_with_valid_ratio_count, 10)
+        self.assertEqual(feature.near_budget_limit_count, 1)
+        self.assertEqual(str(feature.near_budget_limit_rate), "0.1000")
+        self.assertEqual(feature.winner_value_gt_budget_count, 1)
+        self.assertEqual(str(feature.winner_value_gt_budget_rate), "0.1000")
+        self.assertEqual(feature.top_authority_name, "Authority A")
+        self.assertEqual(feature.top_authority_count, 7)
+        self.assertEqual(str(feature.top_authority_share), "0.700000")
+        self.assertEqual(str(feature.authority_hhi), "0.580000")
+        self.assertEqual(feature.top_procedure_type, "Open Local")
+        self.assertEqual(feature.top_procedure_type_count, 6)
+        self.assertEqual(str(feature.top_procedure_type_share), "0.600000")
+        self.assertEqual(str(feature.procedure_type_hhi), "0.460000")
+        self.assertEqual(feature.yoy_value_jump_count, 1)
+        self.assertEqual(feature.yoy_contract_count_jump_count, 1)
+        self.assertEqual(str(feature.max_yoy_value_growth_ratio), "4.000000")
+        self.assertEqual(str(feature.max_yoy_contract_count_growth_ratio), "3.500000")
+
     def test_materialize_qkb_features_handles_missing_optional_fields(self) -> None:
         with isolated_db_environment() as (_, session_factory, engine):
             Base.metadata.create_all(bind=engine)
@@ -942,6 +1094,9 @@ class FeatureMaterializationTests(unittest.TestCase):
         self.assertEqual(app_features["active_procurement_count"].confidence, "safe")
         self.assertEqual(app_features["safe_winner_to_budget_ratio_avg"].confidence, "caution")
         self.assertEqual(app_features["purchase_tickets_count"].confidence, "caution")
+        self.assertEqual(app_features["near_budget_limit_count"].confidence, "caution")
+        self.assertEqual(app_features["authority_hhi"].category, "concentration")
+        self.assertEqual(app_features["max_yoy_value_growth_ratio"].category, "year_over_year")
         self.assertIn("rows_with_valid_ratio_count", app_features)
         self.assertEqual(joined_features["source_row_count"].confidence, "safe")
         self.assertEqual(joined_features["safe_winner_to_budget_ratio_avg"].confidence, "caution")
