@@ -656,6 +656,34 @@ Verification status:
 - exact NIPT live path actually run in this documentation pass
 - one-day date-range live path actually run in this documentation pass
 
+### 10.3 OpenCorporates financial enrichment
+
+Run a single NIPT first:
+
+```powershell
+python -m albiz_collector.cli run opencorporates-financials --nipt J91815014U
+```
+
+Run a bounded SHPK batch after applying the migration:
+
+```powershell
+python -m albiz_collector.cli run opencorporates-financials --limit 20 --delay-seconds 1.0
+```
+
+What this command does:
+
+- selects exact NIPTs deterministically from normalized QKB rows, using known SHPK legal forms by default
+- fetches direct OpenCorporates company-page HTML at a rate-limited cadence
+- stores secondary HTML-derived profile metadata and annual revenue/profit-before-tax values in dedicated OpenCorporates tables
+- skips recently completed profiles for the configured `--stale-days` window unless `--force` is supplied
+- commits each NIPT independently so a later run continues with unfinished or stale work
+
+What it does not do:
+
+- it does not change APP or QKB normalized data
+- it does not download PDFs or use OpenCorporates values as primary QKB evidence
+- it does not enrich every business by default
+
 ## 11. Experimental Collector Usage
 
 The experimental notices collector is intentionally separate from the supported flow.

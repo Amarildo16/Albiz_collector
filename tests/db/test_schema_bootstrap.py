@@ -28,10 +28,18 @@ class SchemaBootstrapTests(unittest.TestCase):
             qkb_search_run_columns = {
                 column["name"] for column in inspector.get_columns("qkb_search_runs")
             }
+            opencorporates_profile_columns = {
+                column["name"] for column in inspector.get_columns("opencorporates_company_profiles")
+            }
+            opencorporates_financial_year_columns = {
+                column["name"] for column in inspector.get_columns("opencorporates_financial_years")
+            }
 
         self.assertIn("raw_fetches", table_names)
         self.assertIn("structured_records", table_names)
         self.assertIn("qkb_search_runs", table_names)
+        self.assertIn("opencorporates_company_profiles", table_names)
+        self.assertIn("opencorporates_financial_years", table_names)
         self.assertIn("is_corrupted", raw_fetch_columns)
         self.assertIn("corruption_reason", raw_fetch_columns)
         self.assertIn("active_procurement_count", app_feature_columns)
@@ -45,6 +53,10 @@ class SchemaBootstrapTests(unittest.TestCase):
         self.assertIn("has_activity_text", joined_feature_columns)
         self.assertIn("current_date", qkb_search_run_columns)
         self.assertIn("status", qkb_search_run_columns)
+        self.assertIn("parse_status", opencorporates_profile_columns)
+        self.assertIn("last_fetched_at", opencorporates_profile_columns)
+        self.assertIn("revenue_amount", opencorporates_financial_year_columns)
+        self.assertIn("profit_before_tax_amount", opencorporates_financial_year_columns)
 
     def test_init_db_cli_reports_bootstrap_contract(self) -> None:
         runner = CliRunner()

@@ -28,6 +28,7 @@ from .sources.qkb_documents import (
 )
 from .sources.qkb_notices_experimental import ExperimentalQkbNoticesCollector
 from .sources.qkb_search import QkbSearchCollector
+from .sources.opencorporates_financials import OpenCorporatesFinancialEnricher
 from .sources.opencorporates_financial_discovery import (
     DEFAULT_DISCOVERY_SAMPLE_SIZE,
     DEFAULT_REQUEST_DELAY_SECONDS,
@@ -153,6 +154,41 @@ def run_experimental_qkb_legal_form_chunk_probe(
         raise typer.BadParameter("--date is required")
 
     result = QkbSearchCollector().probe_legal_form_chunks(probe_date=parsed_probe_date)
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@run_app.command("opencorporates-financials")
+def run_opencorporates_financials(
+    limit: Annotated[int, typer.Option(min=1, help="Maximum NIPTs to fetch in this bounded run")] = 100,
+    offset: Annotated[int, typer.Option(min=0, help="Deterministic QKB NIPT offset before selection")] = 0,
+    delay_seconds: Annotated[
+        float,
+        typer.Option("--delay-seconds", min=0.0, help="Delay between OpenCorporates HTTP requests"),
+    ] = 1.0,
+    force: Annotated[bool, typer.Option(help="Refetch recently completed NIPTs")] = False,
+    nipt: Annotated[str | None, typer.Option("--nipt", help="Fetch one exact NIPT instead of selecting from QKB")] = None,
+    only_shpk: Annotated[
+        bool,
+        typer.Option("--only-shpk/--all-legal-forms", help="Select only known SHPK legal forms from QKB"),
+    ] = True,
+    stale_days: Annotated[
+        int,
+        typer.Option(min=0, help="Skip recently completed profiles fetched within this many days"),
+    ] = 30,
+    dry_run: Annotated[bool, typer.Option(help="Select and report NIPTs without network requests or writes")] = False,
+) -> None:
+    with SessionLocal() as db:
+        result = OpenCorporatesFinancialEnricher().run(
+            db,
+            limit=limit,
+            offset=offset,
+            delay_seconds=delay_seconds,
+            force=force,
+            nipt=nipt,
+            only_shpk=only_shpk,
+            stale_days=stale_days,
+            dry_run=dry_run,
+        )
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 

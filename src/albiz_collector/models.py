@@ -241,6 +241,71 @@ class QkbCompanyFeature(Base):
     search_window_end: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
 
 
+class OpenCorporatesCompanyProfile(Base):
+    """Latest HTML-derived OpenCorporates profile for one exact NIPT."""
+
+    __tablename__ = "opencorporates_company_profiles"
+    __table_args__ = (
+        UniqueConstraint("nipt", name="uq_opencorporates_company_profile_nipt"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nipt: Mapped[str] = mapped_column(String(64), index=True)
+    source_url: Mapped[str] = mapped_column(Text)
+    page_found: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    company_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    has_financial_data: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_revenue_data: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_profit_data: Mapped[bool] = mapped_column(Boolean, default=False)
+    financial_year_count: Mapped[int] = mapped_column(Integer, default=0)
+    min_financial_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_financial_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    financial_document_links_count: Mapped[int] = mapped_column(Integer, default=0)
+    historical_extract_links_count: Mapped[int] = mapped_column(Integer, default=0)
+    visible_csv_json_controls: Mapped[bool] = mapped_column(Boolean, default=False)
+    parse_status: Mapped[str] = mapped_column(String(50), index=True)
+    parse_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=utc_now_naive,
+        onupdate=utc_now_naive,
+    )
+
+
+class OpenCorporatesFinancialYear(Base):
+    """One OpenCorporates HTML-derived annual financial record per NIPT/year."""
+
+    __tablename__ = "opencorporates_financial_years"
+    __table_args__ = (
+        UniqueConstraint(
+            "nipt",
+            "year",
+            "source_type",
+            name="uq_opencorporates_financial_year_nipt_year_source",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nipt: Mapped[str] = mapped_column(String(64), index=True)
+    year: Mapped[int] = mapped_column(Integer, index=True)
+    revenue_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    revenue_amount: Mapped[float | None] = mapped_column(Numeric(24, 2), nullable=True)
+    profit_before_tax_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profit_before_tax_amount: Mapped[float | None] = mapped_column(Numeric(24, 2), nullable=True)
+    source_type: Mapped[str] = mapped_column(String(64), default="opencorporates_html")
+    source_url: Mapped[str] = mapped_column(Text)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now_naive)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=utc_now_naive,
+        onupdate=utc_now_naive,
+    )
+
+
 class JoinedCompanyFeature(Base):
     __tablename__ = "joined_company_features"
     __table_args__ = (
