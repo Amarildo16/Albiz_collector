@@ -660,6 +660,12 @@ Verification status:
 
 The experimental notices collector is intentionally separate from the supported flow.
 
+OpenCorporates financial discovery is also intentionally experimental. It samples a small set of local APP/QKB NIPTs, fetches company-page HTML only, and writes ignored JSON/Markdown feasibility reports. It does not persist fetched pages, download PDFs in bulk, or enrich production tables.
+
+```powershell
+python -m albiz_collector.cli experimental opencorporates-financial-discovery
+```
+
 Correct commands:
 
 ```powershell

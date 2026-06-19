@@ -22,3 +22,4 @@ collector.db
 data/raw/
 data/processed/
 data/exports/
+reports/

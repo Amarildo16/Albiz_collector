@@ -28,6 +28,13 @@ from .sources.qkb_documents import (
 )
 from .sources.qkb_notices_experimental import ExperimentalQkbNoticesCollector
 from .sources.qkb_search import QkbSearchCollector
+from .sources.opencorporates_financial_discovery import (
+    DEFAULT_DISCOVERY_SAMPLE_SIZE,
+    DEFAULT_REQUEST_DELAY_SECONDS,
+    DEFAULT_STRUCTURED_LINK_PROBE_LIMIT,
+    OpenCorporatesFinancialDiscovery,
+    write_opencorporates_financial_discovery_reports,
+)
 from .utils.logging import configure_logging
 
 app = typer.Typer(add_completion=False, help="Albanian business data collector")
@@ -167,6 +174,59 @@ def run_experimental_qkb_secondary_chunk_probe(
     result = QkbSearchCollector().probe_secondary_chunks(
         probe_date=parsed_probe_date,
         forme_ligjore=forme_ligjore,
+    )
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@experimental_app.command("opencorporates-financial-discovery")
+def run_experimental_opencorporates_financial_discovery(
+    sample_size: Annotated[
+        int,
+        typer.Option(
+            "--sample-size",
+            min=1,
+            max=100,
+            help="Maximum unique NIPTs to inspect; defaults to a deliberately small experimental sample",
+        ),
+    ] = DEFAULT_DISCOVERY_SAMPLE_SIZE,
+    request_delay_seconds: Annotated[
+        float,
+        typer.Option(
+            "--request-delay-seconds",
+            min=0.0,
+            help="Delay between OpenCorporates requests to keep the discovery run low-rate",
+        ),
+    ] = DEFAULT_REQUEST_DELAY_SECONDS,
+    structured_link_probe_limit: Annotated[
+        int,
+        typer.Option(
+            "--structured-link-probe-limit",
+            min=0,
+            max=5,
+            help="Maximum companies whose visible JSON or CSV links are fetched for a small structured-data check",
+        ),
+    ] = DEFAULT_STRUCTURED_LINK_PROBE_LIMIT,
+    seed: Annotated[
+        int,
+        typer.Option(help="Deterministic seed for the random SHPK cohort"),
+    ] = 20260619,
+    output_dir: Annotated[
+        str,
+        typer.Option(help="Ignored directory where JSON and Markdown discovery reports are written"),
+    ] = "reports",
+) -> None:
+    with SessionLocal() as db:
+        result = OpenCorporatesFinancialDiscovery().run(
+            db,
+            sample_size=sample_size,
+            request_delay_seconds=request_delay_seconds,
+            structured_link_probe_limit=structured_link_probe_limit,
+            seed=seed,
+        )
+
+    result["report_paths"] = write_opencorporates_financial_discovery_reports(
+        result,
+        output_dir=output_dir,
     )
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
