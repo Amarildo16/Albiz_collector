@@ -77,6 +77,22 @@ _INLINE_PROFIT_PATTERN = re.compile(
 )
 
 
+def normalize_opencorporates_nipt(value: str | None) -> str | None:
+    """Return the canonical uppercase NIPT used by OpenCorporates requests."""
+    if value is None:
+        return None
+    normalized = value.strip().upper()
+    return normalized or None
+
+
+def opencorporates_company_url(nipt: str) -> str:
+    """Build the one canonical direct company URL for a non-empty NIPT."""
+    canonical_nipt = normalize_opencorporates_nipt(nipt)
+    if canonical_nipt is None:
+        raise ValueError("nipt must not be empty")
+    return OPENCORPORATES_COMPANY_URL_TEMPLATE.format(nipt=canonical_nipt)
+
+
 def parse_albanian_decimal(value: str | None) -> Decimal | None:
     """Parse a displayed Albanian-style amount without guessing absent values."""
     if value is None:
@@ -261,62 +277,70 @@ class OpenCorporatesFinancialDiscovery:
         request_delay_seconds: float,
         request_count: int,
     ) -> tuple[dict[str, Any], int]:
+        canonical_nipt = normalize_opencorporates_nipt(nipt)
+        if canonical_nipt is None:
+            return {
+                "business_nipt": None,
+                "source_type": "opencorporates_html",
+                "page_url": None,
+                "urls_tried": [],
+                "status_code": None,
+                "page_exists": None,
+                "access_blocked": False,
+                "failure_reason": "empty_nipt",
+            }, request_count
+
         attempts: list[dict[str, Any]] = []
-        candidate_urls = _company_urls_for_nipt(nipt)
-        for index, url in enumerate(candidate_urls):
-            response, request_count = self._request(
-                http,
-                url,
-                request_delay_seconds=request_delay_seconds,
-                request_count=request_count,
-            )
-            attempts.append({
-                "url": url,
+        url = opencorporates_company_url(canonical_nipt)
+        response, request_count = self._request(
+            http,
+            url,
+            request_delay_seconds=request_delay_seconds,
+            request_count=request_count,
+        )
+        attempts.append({
+            "url": url,
+            "status_code": response.get("status_code"),
+            "error": response.get("error"),
+        })
+        if response.get("error") is not None:
+            return {
+                "business_nipt": canonical_nipt,
+                "source_type": "opencorporates_html",
+                "page_url": url,
+                "urls_tried": attempts,
                 "status_code": response.get("status_code"),
-                "error": response.get("error"),
-            })
-            if response.get("error") is not None:
-                return {
-                    "business_nipt": nipt,
-                    "source_type": "opencorporates_html",
-                    "page_url": url,
-                    "urls_tried": attempts,
-                    "status_code": response.get("status_code"),
-                    "page_exists": None,
-                    "access_blocked": False,
-                    "failure_reason": response["error"],
-                }, request_count
+                "page_exists": None,
+                "access_blocked": False,
+                "failure_reason": response["error"],
+            }, request_count
 
-            status_code = response["status_code"]
-            parsed = parse_opencorporates_company_page(response["text"], page_url=response["url"])
-            parsed.update(
-                {
-                    "business_nipt": nipt,
-                    "source_type": "opencorporates_html",
-                    "page_url": response["url"],
-                    "urls_tried": attempts,
-                    "status_code": status_code,
-                    "content_type": response.get("content_type"),
-                }
-            )
-            if parsed["access_blocked"]:
-                parsed["failure_reason"] = "access_blocked_or_javascript_challenge"
-                return parsed, request_count
-            if status_code in {404, 410} or parsed["page_exists"] is False:
-                if index + 1 < len(candidate_urls):
-                    continue
-                parsed["page_exists"] = False
-                parsed["failure_reason"] = f"http_status_{status_code}" if status_code else "page_not_found"
-                return parsed, request_count
-            if status_code >= 400:
-                parsed["page_exists"] = None
-                parsed["failure_reason"] = f"http_status_{status_code}"
-                return parsed, request_count
-            if not parsed["financial_info_section_exists"]:
-                parsed["failure_reason"] = "financial_section_not_visible"
+        status_code = response["status_code"]
+        parsed = parse_opencorporates_company_page(response["text"], page_url=response["url"])
+        parsed.update(
+            {
+                "business_nipt": canonical_nipt,
+                "source_type": "opencorporates_html",
+                "page_url": response["url"],
+                "urls_tried": attempts,
+                "status_code": status_code,
+                "content_type": response.get("content_type"),
+            }
+        )
+        if parsed["access_blocked"]:
+            parsed["failure_reason"] = "access_blocked_or_javascript_challenge"
             return parsed, request_count
-
-        raise AssertionError("At least one company URL candidate is required")
+        if status_code in {404, 410} or parsed["page_exists"] is False:
+            parsed["page_exists"] = False
+            parsed["failure_reason"] = f"http_status_{status_code}" if status_code else "page_not_found"
+            return parsed, request_count
+        if status_code >= 400:
+            parsed["page_exists"] = None
+            parsed["failure_reason"] = f"http_status_{status_code}"
+            return parsed, request_count
+        if not parsed["financial_info_section_exists"]:
+            parsed["failure_reason"] = "financial_section_not_visible"
+        return parsed, request_count
 
     def _probe_visible_structured_links(
         self,
@@ -634,11 +658,6 @@ def _visible_export_controls(visible_text: str) -> list[str]:
     if re.search(r"\bjson\b", visible_text):
         controls.append("json")
     return controls
-
-
-def _company_urls_for_nipt(nipt: str) -> list[str]:
-    values = [nipt.strip().upper(), nipt.strip().lower()]
-    return list(dict.fromkeys(OPENCORPORATES_COMPANY_URL_TEMPLATE.format(nipt=value) for value in values if value))
 
 
 def _inspect_structured_response(link_type: str, text: str) -> tuple[bool, bool]:

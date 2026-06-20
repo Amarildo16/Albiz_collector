@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from albiz_collector.sources.opencorporates_financial_discovery import (
     OpenCorporatesFinancialDiscovery,
+    opencorporates_company_url,
     parse_albanian_decimal,
     parse_opencorporates_company_page,
 )
@@ -64,7 +65,31 @@ class _UnavailableHttpClient:
         raise OSError("network unavailable")
 
 
+class _StatusFakeHttpClient:
+    def __init__(self, responses: dict[str, tuple[int, str]]) -> None:
+        self._responses = responses
+        self.calls: list[str] = []
+
+    def get(self, url: str) -> ResponsePayload:
+        self.calls.append(url)
+        status_code, text = self._responses[url]
+        return ResponsePayload(
+            url=url,
+            status_code=status_code,
+            content_type="text/html",
+            content=text.encode("utf-8"),
+            text=text,
+            cookies=None,
+        )
+
+
 class OpenCorporatesFinancialDiscoveryTests(unittest.TestCase):
+    def test_company_url_uses_one_canonical_uppercase_nipt(self) -> None:
+        self.assertEqual(
+            opencorporates_company_url(" l01409006d "),
+            "https://opencorporates.al/sq/nipt/L01409006D",
+        )
+
     def test_parse_albanian_decimal_handles_grouped_comma_amounts(self) -> None:
         self.assertEqual(parse_albanian_decimal("79 495 669,00"), Decimal("79495669.00"))
         self.assertEqual(parse_albanian_decimal("1.234.567,89"), Decimal("1234567.89"))
@@ -188,6 +213,24 @@ class OpenCorporatesFinancialDiscoveryTests(unittest.TestCase):
         self.assertEqual(result["summary"]["company_pages_attempted"], 3)
         self.assertTrue(result["summary"]["stopped_early"])
         self.assertEqual(result["summary"]["stopped_early_reason"], "repeated_unavailable_pages")
+
+    def test_discovery_does_not_retry_a_missing_page_with_lowercase_nipt(self) -> None:
+        company_url = "https://opencorporates.al/sq/nipt/L01409006D"
+        http = _StatusFakeHttpClient(
+            {company_url: (404, "<html><body>Page not found</body></html>")}
+        )
+
+        result = OpenCorporatesFinancialDiscovery(http_client=http, sleeper=lambda _: None).discover_sample(
+            [{"nipt": " l01409006d ", "selection_cohorts": ["random_shpk"]}],
+            requested_sample_size=1,
+            request_delay_seconds=0,
+            structured_link_probe_limit=0,
+            seed=1,
+        )
+
+        self.assertEqual(http.calls, [company_url])
+        self.assertEqual(result["summary"]["total_http_requests_executed"], 1)
+        self.assertEqual(result["summary"]["pages_missing"], 1)
 
 
 if __name__ == "__main__":

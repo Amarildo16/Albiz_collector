@@ -21,7 +21,8 @@ from ..models import (
 from ..utils.http import ResponsePayload
 from ..utils.time import utc_now_naive
 from .opencorporates_financial_discovery import (
-    OPENCORPORATES_COMPANY_URL_TEMPLATE,
+    normalize_opencorporates_nipt,
+    opencorporates_company_url,
     parse_albanian_decimal,
     parse_opencorporates_company_page,
 )
@@ -71,11 +72,12 @@ class OpenCorporatesFinancialEnricher:
         )
         started_at = time.monotonic()
         now = self._now_factory()
+        requested_nipt = normalize_opencorporates_nipt(nipt)
         selection = select_opencorporates_financial_nipts(
             db,
             limit=limit,
             offset=offset,
-            nipt=nipt,
+            nipt=requested_nipt,
             only_shpk=only_shpk,
             force=force,
             stale_before=now - timedelta(days=stale_days),
@@ -85,7 +87,7 @@ class OpenCorporatesFinancialEnricher:
             "source_type": OPENCORPORATES_SOURCE_TYPE,
             "requested_limit": limit,
             "offset": offset,
-            "requested_nipt": _normalize_nipt(nipt) if nipt else None,
+            "requested_nipt": requested_nipt,
             "only_shpk": only_shpk,
             "force": force,
             "stale_days": stale_days,
@@ -158,81 +160,79 @@ class OpenCorporatesFinancialEnricher:
         delay_seconds: float,
         request_count: int,
     ) -> tuple[dict[str, Any], int]:
+        canonical_nipt = normalize_opencorporates_nipt(nipt)
+        if canonical_nipt is None:
+            raise ValueError("nipt must not be empty")
+
         attempts: list[dict[str, Any]] = []
-        for index, url in enumerate(_company_url_candidates(nipt)):
-            response, request_count = self._request(
-                http,
-                url,
-                delay_seconds=delay_seconds,
-                request_count=request_count,
-            )
-            attempts.append(
-                {
-                    "url": url,
-                    "status_code": response.get("status_code"),
-                    "error": response.get("error"),
-                }
-            )
-            if response.get("error") is not None:
-                return _error_result(
-                    nipt=nipt,
-                    source_url=url,
-                    http_status=response.get("status_code"),
-                    parse_status="http_error",
-                    error=response["error"],
-                    attempts=attempts,
-                ), request_count
-
-            status_code = response["status_code"]
-            if status_code in {404, 410}:
-                if index == 0:
-                    continue
-                return _missing_page_result(nipt, response["url"], status_code, attempts), request_count
-            if status_code >= 400:
-                return _error_result(
-                    nipt=nipt,
-                    source_url=response["url"],
-                    http_status=status_code,
-                    parse_status="http_error",
-                    error=f"http_status_{status_code}",
-                    attempts=attempts,
-                ), request_count
-
-            try:
-                parsed = parse_opencorporates_company_page(response["text"], page_url=response["url"])
-            except Exception as exc:
-                return _error_result(
-                    nipt=nipt,
-                    source_url=response["url"],
-                    http_status=status_code,
-                    parse_status="parse_error",
-                    error=f"{type(exc).__name__}: {exc}",
-                    attempts=attempts,
-                ), request_count
-
-            if parsed["page_exists"] is None:
-                return _error_result(
-                    nipt=nipt,
-                    source_url=response["url"],
-                    http_status=status_code,
-                    parse_status="parse_error",
-                    error="access_blocked_or_javascript_challenge",
-                    attempts=attempts,
-                ), request_count
-            if parsed["page_exists"] is False:
-                if index == 0:
-                    continue
-                return _missing_page_result(nipt, response["url"], status_code, attempts), request_count
-
-            return _parsed_page_result(
-                nipt=nipt,
-                source_url=response["url"],
-                http_status=status_code,
-                parsed=parsed,
+        url = opencorporates_company_url(canonical_nipt)
+        response, request_count = self._request(
+            http,
+            url,
+            delay_seconds=delay_seconds,
+            request_count=request_count,
+        )
+        attempts.append(
+            {
+                "url": url,
+                "status_code": response.get("status_code"),
+                "error": response.get("error"),
+            }
+        )
+        if response.get("error") is not None:
+            return _error_result(
+                nipt=canonical_nipt,
+                source_url=url,
+                http_status=response.get("status_code"),
+                parse_status="http_error",
+                error=response["error"],
                 attempts=attempts,
             ), request_count
 
-        return _missing_page_result(nipt, _company_url_candidates(nipt)[-1], 404, attempts), request_count
+        status_code = response["status_code"]
+        if status_code in {404, 410}:
+            return _missing_page_result(canonical_nipt, response["url"], status_code, attempts), request_count
+        if status_code >= 400:
+            return _error_result(
+                nipt=canonical_nipt,
+                source_url=response["url"],
+                http_status=status_code,
+                parse_status="http_error",
+                error=f"http_status_{status_code}",
+                attempts=attempts,
+            ), request_count
+
+        try:
+            parsed = parse_opencorporates_company_page(response["text"], page_url=response["url"])
+        except Exception as exc:
+            return _error_result(
+                nipt=canonical_nipt,
+                source_url=response["url"],
+                http_status=status_code,
+                parse_status="parse_error",
+                error=f"{type(exc).__name__}: {exc}",
+                attempts=attempts,
+            ), request_count
+
+        if parsed["page_exists"] is None:
+            return _error_result(
+                nipt=canonical_nipt,
+                source_url=response["url"],
+                http_status=status_code,
+                parse_status="parse_error",
+                error="access_blocked_or_javascript_challenge",
+                attempts=attempts,
+            ), request_count
+        if parsed["page_exists"] is False:
+            return _missing_page_result(canonical_nipt, response["url"], status_code, attempts), request_count
+
+        return _parsed_page_result(
+            nipt=canonical_nipt,
+            source_url=response["url"],
+            http_status=status_code,
+            parsed=parsed,
+            attempts=attempts,
+        ), request_count
 
     def _request(
         self,
@@ -289,7 +289,7 @@ def select_opencorporates_financial_nipts(
 ) -> dict[str, Any]:
     """Return deterministic exact-NIPT candidates, excluding recently completed work."""
     if nipt is not None:
-        normalized_nipt = _normalize_nipt(nipt)
+        normalized_nipt = normalize_opencorporates_nipt(nipt)
         if normalized_nipt is None:
             return {"selected_nipts": [], "skipped_recent": 0, "skipped_offset": 0}
         profile = db.scalar(
@@ -324,7 +324,7 @@ def select_opencorporates_financial_nipts(
     skipped_offset = 0
     candidate_position = 0
     for candidate_nipt, last_fetched_at, parse_status in db.execute(statement):
-        normalized_nipt = _normalize_nipt(candidate_nipt)
+        normalized_nipt = normalize_opencorporates_nipt(candidate_nipt)
         if normalized_nipt is None or normalized_nipt in seen_nipts:
             continue
         seen_nipts.add(normalized_nipt)
@@ -584,11 +584,6 @@ def _record_fetch_outcome(summary: dict[str, Any], fetch_result: dict[str, Any])
         )
 
 
-def _company_url_candidates(nipt: str) -> list[str]:
-    values = [nipt.upper(), nipt.lower()]
-    return list(dict.fromkeys(OPENCORPORATES_COMPANY_URL_TEMPLATE.format(nipt=value) for value in values))
-
-
 def _is_recent_completed_profile(profile: OpenCorporatesCompanyProfile | None, stale_before: datetime) -> bool:
     if profile is None:
         return False
@@ -601,13 +596,6 @@ def _is_recent_completed(last_fetched_at: datetime | None, parse_status: str | N
         and last_fetched_at >= stale_before
         and parse_status in PROFILE_STATUSES_ELIGIBLE_FOR_STALE_SKIP
     )
-
-
-def _normalize_nipt(value: str | None) -> str | None:
-    if value is None:
-        return None
-    normalized = value.strip().upper()
-    return normalized or None
 
 
 def _validate_run_options(*, limit: int, offset: int, delay_seconds: float, stale_days: int) -> None:

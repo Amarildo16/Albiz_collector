@@ -178,6 +178,7 @@ class OpenCorporatesFinancialEnrichmentTests(unittest.TestCase):
 
     def test_run_upserts_profile_and_financial_year_rows(self) -> None:
         nipt = "K12345678A"
+        input_nipt = " k12345678a "
         now = datetime(2026, 6, 19, 12, 0, 0)
         http = _FakeHttpClient({_company_url(nipt): (200, FINANCIAL_HTML)})
         enricher = OpenCorporatesFinancialEnricher(
@@ -189,9 +190,9 @@ class OpenCorporatesFinancialEnrichmentTests(unittest.TestCase):
         with isolated_db_environment() as (_, session_factory, engine):
             Base.metadata.create_all(bind=engine)
             with session_factory() as db:
-                first_result = enricher.run(db, nipt=nipt, delay_seconds=0, force=True)
+                first_result = enricher.run(db, nipt=input_nipt, delay_seconds=0, force=True)
                 http.responses[_company_url(nipt)] = (200, FINANCIAL_HTML.replace("80 000 000,00", "81 000 000,00"))
-                second_result = enricher.run(db, nipt=nipt, delay_seconds=0, force=True)
+                second_result = enricher.run(db, nipt=input_nipt, delay_seconds=0, force=True)
                 profile = db.scalar(select(OpenCorporatesCompanyProfile))
                 financial_rows = db.scalars(
                     select(OpenCorporatesFinancialYear).order_by(OpenCorporatesFinancialYear.year)
@@ -200,8 +201,11 @@ class OpenCorporatesFinancialEnrichmentTests(unittest.TestCase):
         assert profile is not None
         self.assertEqual(first_result["pages_found"], 1)
         self.assertEqual(first_result["financial_rows_upserted"], 2)
+        self.assertEqual(first_result["requested_nipt"], nipt)
         self.assertEqual(second_result["financial_rows_upserted"], 2)
+        self.assertEqual(http.calls, [_company_url(nipt), _company_url(nipt)])
         self.assertEqual(len(financial_rows), 2)
+        self.assertEqual(profile.nipt, nipt)
         self.assertTrue(profile.has_financial_data)
         self.assertEqual(profile.parse_status, "ok")
         self.assertEqual(profile.financial_year_count, 2)
@@ -214,7 +218,6 @@ class OpenCorporatesFinancialEnrichmentTests(unittest.TestCase):
         http = _FakeHttpClient(
             {
                 _company_url(nipt): (404, "<html><body>Page not found</body></html>"),
-                _company_url(nipt.lower()): (404, "<html><body>Page not found</body></html>"),
             }
         )
         enricher = OpenCorporatesFinancialEnricher(http_client=http, sleeper=lambda _: None)
@@ -227,12 +230,45 @@ class OpenCorporatesFinancialEnrichmentTests(unittest.TestCase):
                 financial_rows = db.scalars(select(OpenCorporatesFinancialYear)).all()
 
         assert profile is not None
-        self.assertEqual(http.calls, [_company_url(nipt), _company_url(nipt.lower())])
+        self.assertEqual(http.calls, [_company_url(nipt)])
+        self.assertEqual(result["http_requests_executed"], 1)
         self.assertEqual(result["pages_missing"], 1)
         self.assertEqual(result["financial_rows_upserted"], 0)
         self.assertFalse(profile.page_found)
         self.assertEqual(profile.parse_status, "missing_page")
         self.assertEqual(financial_rows, [])
+
+    def test_server_errors_remain_retryable(self) -> None:
+        nipt = "K12345678A"
+        now = datetime(2026, 6, 19, 12, 0, 0)
+        http = _FakeHttpClient({_company_url(nipt): (500, "<html><body>Server error</body></html>")})
+        enricher = OpenCorporatesFinancialEnricher(
+            http_client=http,
+            sleeper=lambda _: None,
+            now_factory=lambda: now,
+        )
+
+        with isolated_db_environment() as (_, session_factory, engine):
+            Base.metadata.create_all(bind=engine)
+            with session_factory() as db:
+                result = enricher.run(db, nipt=nipt, delay_seconds=0, force=False)
+                profile = db.scalar(select(OpenCorporatesCompanyProfile))
+                retry_selection = select_opencorporates_financial_nipts(
+                    db,
+                    limit=1,
+                    offset=0,
+                    nipt=nipt,
+                    only_shpk=True,
+                    force=False,
+                    stale_before=now - timedelta(days=30),
+                )
+
+        assert profile is not None
+        self.assertEqual(http.calls, [_company_url(nipt)])
+        self.assertEqual(result["http_errors"], 1)
+        self.assertEqual(profile.parse_status, "http_error")
+        self.assertIsNone(profile.page_found)
+        self.assertEqual(retry_selection["selected_nipts"], [nipt])
 
 
 if __name__ == "__main__":
