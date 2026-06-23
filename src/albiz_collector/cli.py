@@ -28,6 +28,10 @@ from .sources.qkb_documents import (
 )
 from .sources.qkb_notices_experimental import ExperimentalQkbNoticesCollector
 from .sources.qkb_search import QkbSearchCollector
+from .sources.qkb_nipt_lookup import (
+    DEFAULT_QKB_NIPT_LOOKUP_DELAY_SECONDS,
+    QkbNiptLookupCollector,
+)
 from .sources.opencorporates_financials import OpenCorporatesFinancialEnricher
 from .sources.opencorporates_financial_discovery import (
     DEFAULT_DISCOVERY_SAMPLE_SIZE,
@@ -300,6 +304,42 @@ def run_qkb_search(
             data_ne=parsed_data_ne,
             forme_ligjore=forme_ligjore,
             restart=restart,
+        )
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+
+
+@run_app.command("qkb-search-by-nipt")
+def run_qkb_search_by_nipt(
+    nipt: Annotated[str | None, typer.Option("--nipt", help="Look up one exact QKB NIPT")] = None,
+    input_path: Annotated[
+        str | None,
+        typer.Option("--input", help="UTF-8 text file containing one NIPT per line"),
+    ] = None,
+    limit: Annotated[int, typer.Option(min=1, help="Maximum eligible NIPTs to look up")] = 100,
+    offset: Annotated[int, typer.Option(min=0, help="Input NIPT offset before selection")] = 0,
+    delay_seconds: Annotated[
+        float,
+        typer.Option("--delay-seconds", min=0.0, help="Delay between targeted QKB lookups"),
+    ] = DEFAULT_QKB_NIPT_LOOKUP_DELAY_SECONDS,
+    force: Annotated[bool, typer.Option(help="Look up NIPTs already present in normalized QKB rows")] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(help="Select NIPTs without making HTTP requests or persistence writes"),
+    ] = False,
+) -> None:
+    if (nipt is None) == (input_path is None):
+        raise typer.BadParameter("Provide exactly one of --nipt or --input")
+
+    with SessionLocal() as db:
+        result = QkbNiptLookupCollector().collect(
+            db,
+            nipt=nipt,
+            input_path=input_path,
+            limit=limit,
+            offset=offset,
+            delay_seconds=delay_seconds,
+            force=force,
+            dry_run=dry_run,
         )
     typer.echo(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 

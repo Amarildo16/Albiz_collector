@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 if ($PSScriptRoot) {
     Set-Location $PSScriptRoot
@@ -6,7 +6,9 @@ if ($PSScriptRoot) {
 
 $python = ".\.venv\Scripts\python.exe"
 $limit = 1000
-$delaySeconds = 1.5
+$delaySeconds = 2.5
+$maxHttpErrorsPerBatch = 50
+
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $log = "reports\opencorporates_continue_$stamp.log"
 $batch = 1
@@ -15,53 +17,48 @@ New-Item -ItemType Directory -Force reports | Out-Null
 
 function Write-LogLine {
     param([string]$Message)
-
     $Message | Tee-Object -FilePath $log -Append
 }
 
-function Write-LogOutput {
-    param([object[]]$Output)
+function Invoke-AlbizLiveCommand {
+    param(
+        [string[]]$Arguments,
+        [string]$TempLog
+    )
 
-    $Output |
-        ForEach-Object {
-            if ($_ -is [System.Management.Automation.ErrorRecord]) {
-                $_.Exception.Message
-            }
-            else {
-                $_.ToString()
-            }
-        } |
-        Tee-Object -FilePath $log -Append
-}
+    if (Test-Path $TempLog) {
+        Remove-Item $TempLog -Force
+    }
 
-function Invoke-AlbizCommand {
-    param([string[]]$Arguments)
-
-    # httpx writes INFO logs to stderr. We capture them, but we do not want
-    # PowerShell to treat those log lines as fatal errors.
     $oldErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
 
     try {
-        $output = & $python @Arguments 2>&1
+        & $python @Arguments 2>&1 |
+            ForEach-Object {
+                if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                    $_.Exception.Message
+                }
+                else {
+                    $_.ToString()
+                }
+            } |
+            Tee-Object -FilePath $TempLog |
+            Tee-Object -FilePath $log -Append
+
         $exitCode = $LASTEXITCODE
     }
     finally {
         $ErrorActionPreference = $oldErrorActionPreference
     }
 
-    $cleanOutput = $output | ForEach-Object {
-        if ($_ -is [System.Management.Automation.ErrorRecord]) {
-            $_.Exception.Message
-        }
-        else {
-            $_.ToString()
-        }
+    $text = ""
+    if (Test-Path $TempLog) {
+        $text = Get-Content $TempLog -Raw
     }
 
     return [PSCustomObject]@{
-        Output = $cleanOutput
-        Text = ($cleanOutput -join [Environment]::NewLine)
+        Text = $text
         ExitCode = $exitCode
     }
 }
@@ -79,63 +76,31 @@ function Get-JsonSummary {
 }
 
 Write-LogLine "===== OPENCORPORATES CONTINUE START $(Get-Date) ====="
-Write-LogLine "limit=$limit delaySeconds=$delaySeconds force=false"
+Write-LogLine "limit=$limit delaySeconds=$delaySeconds force=false dry_run=false maxHttpErrorsPerBatch=$maxHttpErrorsPerBatch"
 
 while ($true) {
     Write-LogLine ""
-    Write-LogLine "===== DRY RUN $batch START $(Get-Date) ====="
+    Write-LogLine "===== BATCH $batch START $(Get-Date) ====="
 
-    $dryResult = Invoke-AlbizCommand @(
-        "-m", "albiz_collector.cli",
-        "run", "opencorporates-financials",
-        "--limit", "$limit",
-        "--dry-run"
-    )
+    $tempLog = "reports\opencorporates_batch_${stamp}_${batch}.tmp.log"
 
-    if ($dryResult.ExitCode -ne 0) {
-        Write-LogOutput $dryResult.Output
-        Write-LogLine "===== DRY RUN $batch FAILED exit=$($dryResult.ExitCode) $(Get-Date) ====="
-        exit $dryResult.ExitCode
-    }
-
-    try {
-        $drySummary = Get-JsonSummary $dryResult.Text
-    }
-    catch {
-        Write-LogOutput $dryResult.Output
-        Write-LogLine "===== DRY RUN $batch FAILED invalid-json $(Get-Date) ====="
-        $_ | Out-String | Tee-Object -FilePath $log -Append
-        exit 1
-    }
-
-    $selectedCount = [int]$drySummary.selected_nipt_count
-    $skippedRecent = [int]$drySummary.skipped_recent
-
-    Write-LogLine "DRY RUN $batch summary: selected_nipt_count=$selectedCount skipped_recent=$skippedRecent http_requests_executed=$($drySummary.http_requests_executed)"
-
-    if ($selectedCount -eq 0) {
-        Write-LogLine "===== COMPLETE: no eligible NIPTs remain $(Get-Date) ====="
-        break
-    }
-
-    Write-LogLine "===== BATCH $batch START selected=$selectedCount $(Get-Date) ====="
-
-    $batchResult = Invoke-AlbizCommand @(
-        "-m", "albiz_collector.cli",
-        "run", "opencorporates-financials",
-        "--limit", "$limit",
-        "--delay-seconds", "$delaySeconds"
-    )
-
-    Write-LogOutput $batchResult.Output
+    $batchResult = Invoke-AlbizLiveCommand `
+        -Arguments @(
+            "-m", "albiz_collector.cli",
+            "run", "opencorporates-financials",
+            "--limit", "$limit",
+            "--delay-seconds", "$delaySeconds"
+        ) `
+        -TempLog $tempLog
 
     if ($batchResult.ExitCode -ne 0) {
         Write-LogLine "===== BATCH $batch FAILED exit=$($batchResult.ExitCode) $(Get-Date) ====="
+        Write-LogLine "Review the log before continuing. Do not use --force."
         exit $batchResult.ExitCode
     }
 
     try {
-        $batchSummary = Get-JsonSummary $batchResult.Text
+        $summary = Get-JsonSummary $batchResult.Text
     }
     catch {
         Write-LogLine "===== BATCH $batch FAILED invalid-json-summary $(Get-Date) ====="
@@ -143,16 +108,38 @@ while ($true) {
         exit 1
     }
 
-    $parseErrors = [int]$batchSummary.parse_errors
-    $httpErrors = [int]$batchSummary.http_errors
-    $persistenceErrors = [int]$batchSummary.persistence_errors
+    $selectedCount = [int]$summary.selected_nipt_count
+    $requestsExecuted = [int]$summary.http_requests_executed
+    $pagesFound = [int]$summary.pages_found
+    $pagesMissing = [int]$summary.pages_missing
+    $companiesWithFinancialData = [int]$summary.companies_with_financial_data
+    $rowsUpserted = [int]$summary.financial_rows_upserted
+    $parseErrors = [int]$summary.parse_errors
+    $httpErrors = [int]$summary.http_errors
+    $persistenceErrors = [int]$summary.persistence_errors
+    $skippedRecent = [int]$summary.skipped_recent
 
-    Write-LogLine "BATCH $batch summary: selected=$($batchSummary.selected_nipt_count) requests=$($batchSummary.http_requests_executed) pages_found=$($batchSummary.pages_found) pages_missing=$($batchSummary.pages_missing) no_financial_or_with_financial=$($batchSummary.companies_with_financial_data) rows=$($batchSummary.financial_rows_upserted) parse_errors=$parseErrors http_errors=$httpErrors persistence_errors=$persistenceErrors"
+    Write-LogLine "BATCH $batch summary: selected=$selectedCount skipped_recent=$skippedRecent requests=$requestsExecuted pages_found=$pagesFound pages_missing=$pagesMissing companies_with_financial_data=$companiesWithFinancialData rows=$rowsUpserted parse_errors=$parseErrors http_errors=$httpErrors persistence_errors=$persistenceErrors"
 
-    if (($parseErrors -gt 0) -or ($httpErrors -gt 0) -or ($persistenceErrors -gt 0)) {
-        Write-LogLine "===== BATCH $batch STOPPED because errors were reported $(Get-Date) ====="
+    if ($selectedCount -eq 0) {
+        Write-LogLine "===== COMPLETE: no eligible NIPTs remain $(Get-Date) ====="
+        break
+    }
+
+    if (($parseErrors -gt 0) -or ($persistenceErrors -gt 0)) {
+        Write-LogLine "===== BATCH $batch STOPPED because parse/persistence errors were reported $(Get-Date) ====="
         Write-LogLine "Review the log before continuing. Do not use --force."
         exit 2
+    }
+
+    if ($httpErrors -gt $maxHttpErrorsPerBatch) {
+        Write-LogLine "===== BATCH $batch STOPPED because too many HTTP errors were reported: $httpErrors $(Get-Date) ====="
+        Write-LogLine "Likely server/rate-limit/network issue. Review the log before continuing. Do not use --force."
+        exit 2
+    }
+
+    if ($httpErrors -gt 0) {
+        Write-LogLine "===== BATCH $batch WARNING: http_errors=$httpErrors; keeping them retryable and continuing $(Get-Date) ====="
     }
 
     Write-LogLine "===== BATCH $batch END $(Get-Date) ====="
