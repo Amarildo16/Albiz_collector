@@ -4,6 +4,7 @@ import base64
 import json
 import re
 import unittest
+from unittest.mock import patch
 
 from sqlalchemy import select
 from typer.testing import CliRunner
@@ -114,6 +115,25 @@ class QkbDocumentClientTests(unittest.TestCase):
         self.assertTrue(result.verified_pdf_magic)
         self.assertEqual(result.pdf_bytes, PDF_BYTES)
         self.assertTrue((result.base64_data_prefix or "").startswith("JVBERi0xLjQ"))
+        self.assertEqual(
+            result.to_summary(),
+            {
+                "endpoint": QKB_DOCUMENTS_ENDPOINT,
+                "request_method": "POST",
+                "business_nipt": "M12345678A",
+                "document_type": "historical",
+                "fetch_kind": "historical_extract_pdf",
+                "request_payload": {"nipt": "M12345678A", "docType": "historical"},
+                "http_status_code": 200,
+                "backend_status": 1,
+                "backend_state": "success",
+                "response_content_type": "text/html; charset=UTF-8",
+                "base64_data_prefix": result.base64_data_prefix,
+                "verified_pdf_magic": True,
+                "pdf_size_bytes": len(PDF_BYTES),
+                "backend_message": None,
+            },
+        )
 
     def test_backend_status_zero_maps_to_not_found(self) -> None:
         http = _FakeHttpClient({"status": 0, "data": "No document found"})
@@ -171,8 +191,12 @@ class QkbDocumentClientTests(unittest.TestCase):
         self.assertTrue(saved.storage_path.endswith(".pdf"))
         self.assertEqual(saved.extra_metadata["business_nipt"], "M12345678A")
         self.assertEqual(saved.extra_metadata["document_type"], "historical")
+        self.assertEqual(saved.extra_metadata["fetch_kind"], "historical_extract_pdf")
+        self.assertEqual(saved.extra_metadata["request_payload"], {"nipt": "M12345678A", "docType": "historical"})
+        self.assertEqual(saved.extra_metadata["http_status_code"], 200)
         self.assertEqual(saved.extra_metadata["backend_status"], 1)
         self.assertTrue(saved.extra_metadata["verified_pdf_magic"])
+        self.assertEqual(saved.extra_metadata["pdf_size_bytes"], len(PDF_BYTES))
 
     def test_experimental_cli_help_mentions_single_document_options(self) -> None:
         runner = CliRunner()
@@ -185,6 +209,43 @@ class QkbDocumentClientTests(unittest.TestCase):
         self.assertIn("doc-type", clean_stdout)
         self.assertIn("save", clean_stdout)
         self.assertNotIn("batch", clean_stdout)
+
+    def test_experimental_cli_no_save_reports_probe_metadata_without_database_write(self) -> None:
+        fake_result = QkbDocumentClient(_FakeHttpClient({"status": 1, "data": PDF_BASE64})).fetch_one(
+            nipt="M12345678A",
+            doc_type="historical",
+        )
+        runner = CliRunner()
+
+        with (
+            patch("albiz_collector.cli.QkbDocumentClient") as client_cls,
+            patch("albiz_collector.cli.SessionLocal", side_effect=AssertionError("database session opened")),
+        ):
+            client_cls.return_value.fetch_one.return_value = fake_result
+
+            result = runner.invoke(
+                app,
+                [
+                    "experimental",
+                    "qkb-document-fetch-one",
+                    "--nipt",
+                    "M12345678A",
+                    "--doc-type",
+                    "historical",
+                    "--no-save",
+                ],
+            )
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        client_cls.return_value.fetch_one.assert_called_once_with(nipt="M12345678A", doc_type="historical")
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary["fetch_kind"], "historical_extract_pdf")
+        self.assertEqual(summary["request_payload"], {"nipt": "M12345678A", "docType": "historical"})
+        self.assertEqual(summary["http_status_code"], 200)
+        self.assertFalse(summary["save_requested"])
+        self.assertFalse(summary["saved"])
+        self.assertIsNone(summary["save_skipped_reason"])
+        self.assertIsNone(summary["raw_fetch_id"])
 
 
 if __name__ == "__main__":

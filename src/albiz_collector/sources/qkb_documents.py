@@ -74,6 +74,9 @@ class QkbDocumentFetchResult:
             "request_method": self.request_method,
             "business_nipt": self.business_nipt,
             "document_type": self.document_type,
+            "fetch_kind": fetch_kind_for_doc_type(self.document_type),
+            "request_payload": dict(self.request_payload),
+            "http_status_code": self.http_status_code,
             "backend_status": self.backend_status,
             "backend_state": self.backend_state,
             "response_content_type": self.response_content_type,
@@ -137,14 +140,17 @@ class QkbDocumentCollector(CollectorBase):
             extra_metadata={
                 "business_nipt": result.business_nipt,
                 "document_type": result.document_type,
+                "fetch_kind": fetch_kind,
                 "endpoint": result.endpoint,
                 "request_method": result.request_method,
                 "request_payload": result.request_payload,
+                "http_status_code": result.http_status_code,
                 "backend_status": result.backend_status,
                 "backend_state": result.backend_state,
                 "response_content_type": result.response_content_type,
                 "base64_data_prefix": result.base64_data_prefix,
                 "verified_pdf_magic": result.verified_pdf_magic,
+                "pdf_size_bytes": result.pdf_size_bytes,
             },
         )
 

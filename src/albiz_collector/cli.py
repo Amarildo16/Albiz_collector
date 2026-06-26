@@ -124,7 +124,9 @@ def run_experimental_qkb_document_fetch_one(
     summary = result.to_summary()
     summary.update(
         {
+            "save_requested": save,
             "saved": False,
+            "save_skipped_reason": None,
             "content_hash": None,
             "raw_fetch_id": None,
             "raw_fetch_path": None,

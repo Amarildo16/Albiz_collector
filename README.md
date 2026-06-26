@@ -193,6 +193,17 @@ QKB date-range runs are now resumable and their progress is stored in the databa
 - completed runs are not resumed again; rerunning the same completed range starts a new run
 - `--restart` forces a fresh run from `date_from` and interrupts any unfinished saved run for the same range
 
+Run one QKB subject document fetch (experimental):
+
+```bash
+python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt M21528028T --doc-type historical --no-save
+python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt M21528028T --doc-type simple --no-save
+python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt M21528028T --doc-type rpp --no-save
+python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt M21528028T --doc-type historical --save
+```
+
+This command is intentionally limited to one NIPT and one allowlisted document type: `historical`, `simple`, or `rpp`. It posts the public form fields `nipt` and `docType`, does not accept credentials or cookie values, decodes the JSON base64 PDF response, verifies `%PDF`, and prints a JSON probe summary. `--no-save` performs no database or RawFetch writes; `--save` persists only a successful verified PDF as a `RawFetch`. There is no batch document collector and no PDF parsing in this experimental path.
+
 Materialize normalized datasets:
 
 ```bash
