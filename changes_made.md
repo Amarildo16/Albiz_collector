@@ -1,63 +1,37 @@
-# Dataset Documentation Draft — 2026-05-09
+# Changes Made
+
+## 2026-06-28 Documentation Synchronization
+
+This pass updated documentation only.
 
 ## Summary
 
-- Created `DATASET_DOCUMENTATION_DRAFT.md`: a formal academic documentation file written in Albanian covering the dataset's purpose, QKB registry data importance, proposed dataset naming, technologies and collection techniques, raw vs normalized data architecture, source limitations, ethical and legal considerations, expected post-collection analyses, current implementation status, current limitations, and planned next phases.
-- The document is based exclusively on functionality already implemented in the repository.
-- No code changes, database schema changes, or new dependencies were introduced.
+- Rewrote the README as a short project overview.
+- Rebuilt the setup and command reference from the current Typer CLI in `src/albiz_collector/cli.py`.
+- Added thesis-oriented technical documentation.
+- Rewrote dataset documentation around the implemented raw, structured, normalized, feature, profiling, audit, and enrichment layers.
+- Replaced stale command examples with valid commands.
+- Removed QKB Universe, QKB document batch extraction, PDF parsing, and historical extract design from the active documentation flow.
+- Marked archived QKB Universe / historical extract research notes as out of thesis scope.
 
-## Files Changed
+## Files Updated
 
-- `DATASET_DOCUMENTATION_DRAFT.md` — new file added
-- `changes_made.md` — updated with this summary
+- `README.md`
+- `PROJECT_SETUP_AND_COMMANDS.md`
+- `PROJECT_FULL_EXPLANATION.md`
+- `DATASET_DOCUMENTATION_DRAFT.md`
+- `FULL_AUDIT_REPORT.md`
+- `THESIS_TECHNICAL_DOCUMENTATION.md`
+- `run_examples.txt`
+- `docs/research_dataset_design.md`
+- `docs/feature_layer_design.md`
+- `docs/data_profiling_readiness.md`
+- `docs/deployment_and_migration_runbook.md`
+- `docs/QKB_UNIVERSE_AND_FINANCIALS_PLAN.md`
 
-## Warnings And Intentional Non-Changes
+## Intentional Non-Changes
 
-- No collector behavior changed.
-- No database models changed.
-- No Alembic migrations were created.
+- No Python source files were modified.
 - No tests were modified.
-- No real `.env` was created or modified.
-
----
-
-# QKB Experimental Document Fetcher Hardening Summary
-
-Date: 2026-04-24
-
-## Summary
-
-- Hardened the experimental one-NIPT QKB document fetcher with confirmed browser replay headers.
-- Updated request headers to include:
-  - `Accept: */*`
-  - `Content-Type: application/x-www-form-urlencoded`
-  - `Origin: https://format.qkb.gov.al`
-  - `Referer: https://format.qkb.gov.al/kerko-per-subjekt/`
-- Updated fake-HTTP tests to assert the full confirmed header set.
-- Updated the historical request fixture with sanitized browser cookie evidence.
-- Updated discovery documentation to note that browser evidence sent cookie name `TS2f08e597027`, while the experimental CLI one-NIPT fetch worked without manually supplying cookies.
-
-## Files Changed
-
-- `src/albiz_collector/sources/qkb_documents.py`
-- `tests/sources/test_qkb_documents.py`
-- `tests/fixtures/qkb_documents/historical-view-request.json`
-- `QKB_ENDPOINT_DISCOVERY_GUIDE.md`
-- `changes_made.md`
-
-## Warnings And Intentional Non-Changes
-
-- No production QKB search collector behavior changed.
-- No batch or broad QKB document collection was added.
-- No database models changed.
-- No Alembic migrations were created.
-- No raw cookie values or session tokens were stored.
-- No real `.env` was created or modified.
-- Existing local `.env` and modified `.env.example` were left untouched.
-
-## Test Result
-
-- Command run: `python -m pytest`
-- Python: `3.12.9` from the project virtual environment.
-- Result: `77 passed, 1 warning in 32.04s`.
-- Warning: pytest could not create its cache path under `.pytest_cache`; the generated cache directory was removed after the test run.
+- No migrations were modified.
+- No database files, `.env`, logs, reports, raw data, or generated files were modified.

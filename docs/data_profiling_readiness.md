@@ -1,51 +1,58 @@
 # Data Profiling And Analytical Readiness
 
-This note defines the small profiling layer for the current normalized and feature datasets.
-
-## Purpose
-
-The profiling commands measure the current local dataset honestly.
-
-They answer questions such as:
-
-- how many normalized APP and QKB rows currently exist
-- how many feature rows currently exist
-- how often important fields are missing
-- how much exact APP to QKB join coverage is currently available
-- which feature tables are usable now and which are blocked by missing data or missing joins
+The profiling layer measures the current local database state. It is read-only.
 
 ## Commands
 
-- `python -m albiz_collector.cli profile normalized`
-- `python -m albiz_collector.cli profile features`
-- `python -m albiz_collector.cli profile all`
+```powershell
+python -m albiz_collector.cli profile normalized
+python -m albiz_collector.cli profile features
+python -m albiz_collector.cli profile all
+python -m albiz_collector.cli profile qkb-legal-forms
+```
 
-## What is measured
+## Normalized Profiling
 
-### Normalized datasets
+`profile normalized` reports:
 
-- row counts for `normalized_app_export_rows` and `normalized_qkb_search_rows`
-- missingness for important APP and QKB fields
-- APP winner NIPT coverage
-- QKB business NIPT coverage
-- distinct identifier counts
-- exact APP `winner_nipt` to QKB `business_nipt` join coverage
+- row counts for `normalized_app_export_rows` and `normalized_qkb_search_rows`;
+- APP winner NIPT coverage;
+- QKB business NIPT coverage;
+- important APP field missingness;
+- important QKB field missingness;
+- exact APP/QKB join coverage.
 
-### Feature datasets
+## Feature Profiling
 
-- row counts for `app_company_features`, `qkb_company_features`, and `joined_company_features`
-- feature sparsity for important fields using the current feature-confidence registry
-- a small readiness assessment for each feature table
+`profile features` reports:
 
-### Analytical readiness summary
+- row counts for `app_company_features`, `qkb_company_features`, and `joined_company_features`;
+- feature sparsity using the feature registry;
+- readiness status for each feature table.
 
-- strengths visible in the current local dataset
-- weaknesses and blockers
-- usable feature families now
-- recommended backfill actions that would most improve downstream analysis
+## Combined Profiling
 
-## Scope limits
+`profile all` combines normalized and feature profiling and adds an analytical-readiness summary:
 
-The profiling layer is read-only.
+- strengths visible in the current dataset;
+- weaknesses;
+- blockers;
+- currently usable feature families;
+- priority backfill actions.
 
-It does not add new data, create labels, or redesign the feature layer. It only measures what the current local dataset can realistically support.
+## QKB Legal-Form Profiling
+
+`profile qkb-legal-forms` reports:
+
+- total normalized QKB rows;
+- distinct business NIPTs;
+- missing legal-form count;
+- SHPK and non-SHPK counts;
+- raw legal-form distributions;
+- canonical legal-form distributions.
+
+This is useful for checking whether QKB collection aligns with the intended company cohorts.
+
+## Scope Limits
+
+Profiling does not collect new data, update rows, create labels, or train models. It reports the analytical readiness of the data already present in the local database.

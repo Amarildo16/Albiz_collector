@@ -1,3 +1,5 @@
+Archived research idea. Not part of the current thesis implementation.
+
 # QKB Historical Extract / Financial Document Collection Design
 
 Date: 2026-04-24
@@ -290,28 +292,7 @@ No concurrent or broad historical download should be enabled until Phase 1 and P
 
 ## Proposed CLI Commands
 
-Do not implement yet.
-
-Discovery and proof commands should start under `experimental`:
-
-- `python -m albiz_collector.cli experimental qkb-document-discover --nipt <NIPT> --doc-type historical`
-- `python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt <NIPT> --doc-type historical`
-- `python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt <NIPT> --doc-type simple`
-- `python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt <NIPT> --doc-type rpp`
-
-After endpoint and storage behavior are proven:
-
-- `python -m albiz_collector.cli run qkb-documents --doc-type historical --limit <N>`
-- `python -m albiz_collector.cli run qkb-documents --nipt <NIPT> --doc-type historical`
-- `python -m albiz_collector.cli audit qkb-documents`
-- `python -m albiz_collector.cli normalize qkb-documents`
-
-Financial statement extraction should remain separate until document availability and PDF text quality are known:
-
-- `python -m albiz_collector.cli experimental qkb-pdf-text --raw-fetch-id <ID>`
-- `python -m albiz_collector.cli experimental qkb-financial-detect --raw-fetch-id <ID>`
-
-Existing CLI command names should remain compatible.
+Archived proposal only. The batch document, PDF text, and QKB financial-detection commands proposed in this section were not implemented and are not part of the current thesis workflow. The only implemented document-related command is the bounded one-NIPT experimental probe documented in the active command reference.
 
 ## Proposed Tests
 

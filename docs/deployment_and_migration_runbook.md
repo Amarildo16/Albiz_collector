@@ -1,49 +1,40 @@
 # Deployment And Migration Runbook
 
-This runbook describes the supported operational path for the repository in its current state.
+This runbook describes the supported operational path for the current repository.
 
-## Scope
+## Supported Production Workflow
 
-Supported production collectors:
-- `app_exports`
-- `qkb_search`
+Production commands:
 
-Not part of the supported production workflow:
-- `qkb_notices_experimental`
+- `run app-exports`
+- `run qkb-search`
+- `run qkb-search-by-nipt`
+- `run opencorporates-financials`
+- `normalize all`
+- `features all`
+- `profile all`
+- `audit raw-fetches`
+- `audit qkb-search-runs`
+- `smoke app`
+- `smoke qkb-search`
+- `smoke all`
+- `scheduler`
 
-This runbook assumes Alembic migrations are the required path for schema changes.
-
-## Safe Default Production Flow
-
-1. Configure environment:
-   - set `DATABASE_URL`
-   - set `RAW_STORAGE_DIR`
-   - set supported scheduler variables if you use the scheduler
-2. Back up the target database before applying any migration.
-3. Ensure the target DB is on the expected Alembic revision.
-4. Run supported collectors only:
-   - `python -m albiz_collector.cli run app-exports`
-   - `python -m albiz_collector.cli run qkb-search --...`
-   - or `python -m albiz_collector.cli scheduler`
-5. Rebuild derived tables from stored snapshots:
-   - `python -m albiz_collector.cli normalize all`
-   - `python -m albiz_collector.cli features all`
-   - `python -m albiz_collector.cli profile all`
+Experimental commands are available only under `experimental` and are not part of the production thesis workflow.
 
 ## Fresh Database Setup
 
-For a brand-new database:
+For a new database:
 
-```bash
+```powershell
 alembic upgrade head
 ```
 
-This is the supported path for creating the full schema, including `alembic_version`.
+Then collect and materialize:
 
-After a fresh DB is ready, you can run the supported collectors and then materialize the derived layers:
-
-```bash
+```powershell
 python -m albiz_collector.cli run app-exports
+python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 2026-04-17
 python -m albiz_collector.cli normalize all
 python -m albiz_collector.cli features all
 python -m albiz_collector.cli profile all
@@ -51,204 +42,114 @@ python -m albiz_collector.cli profile all
 
 ## Existing Database Adoption
 
-If you already have a database created from the current models and it matches the current schema exactly:
+If an existing database already matches the current migration head exactly, stamp it only after manual schema verification:
 
-1. Back it up first.
-2. Record the existing schema state manually.
-3. Stamp the current Alembic head without recreating tables:
-
-```bash
+```powershell
 alembic stamp head
 ```
 
-Use `stamp head` only when you are confident the existing schema already matches the current migration head.
-
-If the existing schema does not match the current migration history, do not stamp blindly. Resolve the schema gap first.
+Do not use `stamp head` to hide schema drift.
 
 ## Migration Execution
 
-Before any migration:
-- take a database backup
-- review the generated Alembic revision
-- prefer applying migrations first in a disposable or staging environment
+Before applying migrations:
 
-Create and apply a migration:
+- back up the database;
+- review the migration file;
+- test against a disposable or staging database where possible.
 
-```bash
-alembic revision --autogenerate -m "describe schema change"
+Apply migrations:
+
+```powershell
 alembic upgrade head
 ```
 
-## Backup Expectation Before Migrations
+Create a new migration only when making schema changes:
 
-This repo does not provide automated backup tooling.
+```powershell
+alembic revision --autogenerate -m "describe schema change"
+```
 
-Operational expectation:
-- create a database backup before `alembic upgrade head`
-- keep the backup until the deployment is verified
-- do not rely on `downgrade` as your only recovery path
+## Raw-Fetch Audit
 
-## Rollback Expectation And Limitations
+Use raw-fetch audit before trusting older raw artifacts or after storage-related incidents:
 
-Rollback is limited by the migrations you have actually written and tested.
-
-Current safe expectation:
-- if a downgrade revision exists and has been tested, you may use it intentionally
-- otherwise, restore from a backup instead of improvising schema rollback in production
-
-For data-affecting incidents, restoring from backup is safer than trying to reconstruct state manually.
-
-## Operational Commands
-
-### `audit raw-fetches`
-
-Use when:
-- validating historical raw provenance
-- investigating collector/storage incidents
-- after changes to raw persistence logic
-- before trusting older stored artifacts for downstream analysis
-
-Commands:
-
-```bash
+```powershell
 python -m albiz_collector.cli audit raw-fetches
 python -m albiz_collector.cli audit raw-fetches --source-name qkb_search
-python -m albiz_collector.cli audit raw-fetches --mark-corrupted
 python -m albiz_collector.cli audit raw-fetches --corrupted-only
+python -m albiz_collector.cli audit raw-fetches --mark-corrupted
 ```
 
-Important:
-- the command does not delete rows
-- the command does not rewrite files
-- the command does not rewrite stored hashes
-- `--mark-corrupted` only sets quarantine metadata on affected rows
+`--mark-corrupted` sets quarantine metadata. It does not delete rows or rewrite files.
 
-### `normalize all`
+## QKB Run-State Audit
 
-Use when:
-- new supported source snapshots have been collected
-- parser/normalizer logic changed and you need refreshed normalized rows
-- you want to confirm the current normalized state after a maintenance pass
+Use QKB run-state audit to inspect resumable date-range runs:
 
-Command:
+```powershell
+python -m albiz_collector.cli audit qkb-search-runs
+python -m albiz_collector.cli audit qkb-search-runs --status running --limit 20
+```
 
-```bash
+## Derived Table Rebuild
+
+After collection or parser changes:
+
+```powershell
 python -m albiz_collector.cli normalize all
-```
-
-Current behavior note:
-- normalization skips quarantined raw fetches
-- it does not itself purge previously materialized rows automatically for already-quarantined snapshots unless those snapshots are reprocessed successfully
-
-### `features all`
-
-Use when:
-- normalized rows changed
-- quarantined raw rows should be excluded from feature rebuilds
-- you want the current feature tables to reflect the latest trusted normalized input
-
-Command:
-
-```bash
 python -m albiz_collector.cli features all
-```
-
-### `profile all`
-
-Use when:
-- you want the current analytical-readiness snapshot
-- you have just rebuilt features
-- you want to inspect current join coverage and sparsity after maintenance
-
-Command:
-
-```bash
 python -m albiz_collector.cli profile all
 ```
 
-## MySQL Integration Tests
+## Smoke Checks
 
-These are opt-in and intentionally separate from the fast default unit suite.
+Smoke checks are opt-in live checks for supported public source contracts:
 
-Use when:
-- verifying the supported MySQL runtime path locally
-- validating migration behavior against a real MySQL server
-- checking that persistence and normalization still work before deployment
-- validating the optional CI MySQL job
-
-Commands:
-
-```bash
-$env:RUN_MYSQL_INTEGRATION_TESTS="1"  # PowerShell
-python -m unittest discover -s tests/integration -p "*_integration.py" -v
-```
-
-Optional admin URL override:
-- `MYSQL_INTEGRATION_ADMIN_URL=mysql+pymysql://root:password@127.0.0.1:3306/mysql`
-
-The integration suite creates disposable databases and drops them after the run.
-
-## Source-Contract Smoke Checks
-
-These are opt-in live checks for the supported production sources only:
-- APP export index page
-- QKB search page
-
-Use when:
-- before a production rollout
-- after upstream site changes are suspected
-- after collector selector/contract changes
-- when a supported collector suddenly starts failing live
-
-Commands:
-
-```bash
+```powershell
 python -m albiz_collector.cli smoke app
 python -m albiz_collector.cli smoke qkb-search
 python -m albiz_collector.cli smoke all
 ```
 
-Behavior:
-- low-volume
-- read-only
-- does not touch the database
-- fails clearly when expected structural contract elements disappear
+They are low-volume and do not write database rows.
 
-If your shell has stale proxy environment variables set, unset them first or the smoke checks may fail for network reasons rather than real source drift.
+## Scheduler
 
-## Scheduler Use
+Run:
 
-Supported scheduler scope:
-- `app_exports`
-- `qkb_search`
-
-The scheduler uses `Europe/Tirane` explicitly for its rolling QKB search window.
-QKB date-range runs persist resumable progress in the database and resume from the next unfinished day when the same unfinished range is invoked again.
-
-Experimental collectors are intentionally excluded from automated scheduler flows.
-
-## Optional Maintenance Actions
-
-Optional maintenance, depending on the incident or deployment:
-- `audit raw-fetches --mark-corrupted`
-- `audit qkb-search-runs`
-- `normalize all`
-- `features all`
-- `profile all`
-- opt-in smoke checks
-- opt-in MySQL integration tests
-
-These are not all required on every run. Use them intentionally based on what changed.
-
-## Experimental Collector Path
-
-The experimental path remains available for explicit manual use only:
-
-```bash
-python -m albiz_collector.cli experimental qkb-notices
-python -m albiz_collector.cli experimental qkb-notices --playwright
+```powershell
+python -m albiz_collector.cli scheduler
 ```
 
-It is not part of the supported production flow.
-It is not part of the supported scheduler flow.
-It should not be treated as a production ingestion pipeline.
+The scheduler runs APP exports and, when enabled in `.env`, a rolling QKB search window. Scheduler date logic uses `Europe/Tirane`.
+
+## Tests
+
+Default suite:
+
+```powershell
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+Opt-in MySQL integration suite:
+
+```powershell
+$env:RUN_MYSQL_INTEGRATION_TESTS="1"
+python -m unittest discover -s tests\integration -p "*_integration.py" -v
+```
+
+## Experimental Commands
+
+These commands are not part of the production thesis workflow:
+
+```powershell
+python -m albiz_collector.cli experimental qkb-notices
+python -m albiz_collector.cli experimental qkb-notices --playwright
+python -m albiz_collector.cli experimental qkb-document-fetch-one --nipt M21528028T --doc-type historical --no-save
+python -m albiz_collector.cli experimental qkb-legal-form-chunk-probe --date 2026-04-01
+python -m albiz_collector.cli experimental qkb-secondary-chunk-probe --date 2026-04-01 --forme-ligjore SHPK
+python -m albiz_collector.cli experimental opencorporates-financial-discovery --sample-size 10
+```
+
+The experimental document command is a bounded one-NIPT probe. No batch QKB document workflow is part of deployment.

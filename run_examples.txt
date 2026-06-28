@@ -1,46 +1,44 @@
 # one-time local setup
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python -m playwright install chromium
+Copy-Item .env.example .env
+alembic upgrade head
 
-# parser-focused unit tests
-python -m unittest discover -s tests -p "test_*.py" -v
-# DB-focused unit tests
-python -m unittest discover -s tests/db -p "test_*.py" -v
-# normalization-focused unit tests
-python -m unittest discover -s tests/normalization -p "test_*.py" -v
-
-# bootstraps missing tables for the current models; not a migration runner
+# bootstrap fallback for local development only
 python -m albiz_collector.cli init-db
-# strongest stable baseline
+
+# collect data
 python -m albiz_collector.cli run app-exports
 python -m albiz_collector.cli run app-exports --years 2025 --years 2026
-# experimental / exploratory
-python -m albiz_collector.cli run qkb-notices
-python -m albiz_collector.cli run qkb-notices --playwright
-# primary QKB path
 python -m albiz_collector.cli run qkb-search --nipt M21528028T
 python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 2026-04-17
-python -m albiz_collector.cli run qkb-search --nipt M21528028T --playwright
+python -m albiz_collector.cli run qkb-search --data-nga 2026-04-01 --data-ne 2026-04-17 --forme-ligjore SHPK
+python -m albiz_collector.cli run qkb-search-by-nipt --nipt M21528028T
+python -m albiz_collector.cli run qkb-search-by-nipt --input .\nipts.txt --limit 100 --delay-seconds 1
+python -m albiz_collector.cli run opencorporates-financials --limit 100 --delay-seconds 1
 
-# materialize normalized research-ready datasets from stored snapshots
+# materialize derived tables
 python -m albiz_collector.cli normalize app-exports
 python -m albiz_collector.cli normalize qkb-search
 python -m albiz_collector.cli normalize all
-# rerun-safe: repeated normalization replaces rows for the same snapshot rather than duplicating them
-python -m albiz_collector.cli normalize all
-
-# dataset semantics and thesis-oriented join policy are documented in docs/research_dataset_design.md
-
-# baseline analytical features built on top of normalized APP and QKB datasets
 python -m albiz_collector.cli features app
 python -m albiz_collector.cli features qkb
 python -m albiz_collector.cli features joined
 python -m albiz_collector.cli features all
 
-# read-only profiling for analytical readiness, missingness, and exact-join coverage
+# inspect quality and readiness
 python -m albiz_collector.cli profile normalized
 python -m albiz_collector.cli profile features
 python -m albiz_collector.cli profile all
+python -m albiz_collector.cli profile qkb-legal-forms
+python -m albiz_collector.cli audit raw-fetches
+python -m albiz_collector.cli audit qkb-search-runs
+python -m albiz_collector.cli smoke all
 
-# local recurring automation: app_exports always, qkb_search by default, qkb_notices only if explicitly enabled in env
+# scheduler
 python -m albiz_collector.cli scheduler
+
+# tests
+python -m unittest discover -s tests -p "test_*.py" -v

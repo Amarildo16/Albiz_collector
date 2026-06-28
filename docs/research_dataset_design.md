@@ -1,170 +1,136 @@
 # Research Dataset Design
 
-This note defines the current thesis-oriented analytical dataset design built on top of the repo's raw, structured, and normalized layers.
+This note defines the thesis-oriented analytical dataset design implemented in the current repository.
 
-## Source datasets
+## Source Datasets
 
-### APP dataset
+### APP Procurement Rows
 
 - Table: `normalized_app_export_rows`
-- Analytical unit: one procurement row from one APP export CSV
-- Main use: procurement exposure, award context, and procurement outcome/value analysis
+- Unit: one procurement row from one APP export CSV.
+- Main use: procurement participation, award values, procedure context, cancellation/suspension status, and company-level procurement exposure.
 
-Strong fields:
+Core fields:
+
 - `procurement_reference`
-- `winner_nipt`
-- `publication_date`
-- `budget_limit_amount`
-- `winner_value_amount`
+- `contracting_authority`
 - `procedure_type`
 - `contract_type`
+- `publication_date`
 - `is_cancelled`
 - `is_suspended`
-
-Useful with caution:
+- `budget_limit_amount`
 - `winner_name`
-- `procurement_subject`
-- `cpv_codes`
+- `winner_nipt`
+- `winner_value_amount`
 
-Weak/noisy:
-- free-text row payload content outside the normalized columns
-
-### QKB dataset
+### QKB Registry Rows
 
 - Table: `normalized_qkb_search_rows`
-- Analytical unit: one business result row from one QKB search snapshot
-- Main use: company identity, registry status, legal form, timing, and registry context
+- Unit: one business result row from one QKB search snapshot.
+- Main use: company identity, registry status, legal form, registration timing, and context for exact APP joins.
 
-Strong fields:
+Core fields:
+
 - `business_nipt`
 - `business_name`
+- `trade_name`
 - `legal_form`
 - `registration_date`
+- `city`
 - `subject_status`
-
-Useful with caution:
-- `trade_name`
-- `ownership_text`
 - `activity_text`
 - `has_red_flags`
 
-Weak/noisy:
-- `administrators_text`
-- `subject_type` when sparsely populated
-- search-form context fields as intrinsic company attributes
+### OpenCorporates Financial Enrichment
 
-## Recommended analytical design
+- Tables: `opencorporates_company_profiles`, `opencorporates_financial_years`
+- Unit: one profile per NIPT and one annual financial row per NIPT/year/source type.
+- Main use: supplementary revenue/profit context where visible on public profile pages.
 
-Keep two source datasets first:
+This enrichment is not required for the APP/QKB joined feature layer.
 
-1. APP procurement rows
-2. QKB registry rows
+## Join Policy
 
-Then derive a joined analytical dataset only where an exact company identifier exists.
+The implemented join policy is exact identifier equality:
 
-### Primary entities
+```text
+APP winner_nipt == QKB business_nipt
+```
 
-- Procurement event / procurement row
-- Registry business row
-- Exact APP award-to-business join row when identifiers permit
+This is the only automated join used by the feature layer.
 
-### Safest default join
+Avoid by default:
 
-- APP `winner_nipt` -> QKB `business_nipt`
-- Match type: exact only
+- automatic name-only joins;
+- fuzzy company-name matching;
+- address or city joins;
+- activity-text joins;
+- administrator-name joins.
 
-This is the minimum defensible automated join currently supported by the repo.
+Rows without exact identifiers remain in their source dataset.
 
-## Join policy
+## Implemented Analytical Tables
 
-### Safe joins
+### `app_company_features`
 
-- Exact `winner_nipt == business_nipt`
+Unit: one APP winner NIPT.
 
-### Possible but risky joins
+Main feature groups:
 
-- Winner name vs business name for manual review only
-- Trade-name comparisons as secondary human review context
+- procurement counts;
+- cancellation and suspension rates;
+- budget and winner-value totals;
+- safe winner-to-budget ratios;
+- budget proximity indicators;
+- procedure and authority concentration;
+- year-over-year value and count changes.
 
-### Joins to avoid by default
+### `qkb_company_features`
 
-- Automatic name-only joins
-- Address or city joins
-- Activity-text joins
-- Contracting-authority text joins to registry business rows
+Unit: one QKB business NIPT.
 
-If an APP row lacks `winner_nipt`, keep it in the APP-only dataset unless a later manual review workflow is introduced explicitly.
+Main feature groups:
 
-## Feature candidates for later work
+- registry identity;
+- legal form;
+- subject status;
+- registration date and year;
+- city;
+- red-flag indicator;
+- activity and ownership text presence.
 
-These are candidates only, not implemented feature pipelines.
+### `joined_company_features`
 
-### Company identity / registry features
+Unit: one exact APP/QKB joined company NIPT.
 
-- `business_nipt`
-- `legal_form`
-- `registration_date`
-- derived business age from `registration_date`
-- `subject_status`
-- `ownership_text`
+Main feature groups:
 
-### Procurement participation / exposure features
+- APP procurement aggregates;
+- QKB registry enrichment;
+- company age at first and last observed procurement;
+- exact-join provenance fields.
 
-- count of APP rows by `winner_nipt`
-- sum of `winner_value_amount` by `winner_nipt`
-- sum of `budget_limit_amount` by `winner_nipt`
-- APP row counts by `procedure_type`
-- APP row counts by `contract_type`
+## Research-Safe Usage
 
-### Procurement outcome / value features
+Safe and defensible:
 
-- budget-to-award ratio where both amounts exist
-- cancellation rate by winner or authority context
-- suspension rate by winner or authority context
-- award value distribution by company
+- exact NIPT joins;
+- procurement dates, values, procedure types, and status flags;
+- QKB legal form, registration date, and subject status;
+- provenance-backed aggregation by normalized row.
 
-### Temporal features
+Use with caution:
 
-- publication year / month
-- company age at procurement publication date
-- procurement cadence over time by company
+- QKB free-text activity and ownership fields;
+- APP winner names as labels or explanatory text;
+- QKB red-flag indicator as a source-side signal, not a final risk label;
+- OpenCorporates financial enrichment due to coverage variability.
 
-### Risk-oriented candidates
+Not implemented:
 
-- QKB `has_red_flags`
-- QKB `subject_status`
-- repeated APP cancellations involving the same winner context
-- repeated APP suspensions involving the same winner context
-
-## Research-safe vs research-risky usage
-
-### Safe and defensible
-
-- Exact NIPT joins
-- Registry identity fields
-- Procurement value/date/procedure fields
-- Provenance-backed aggregation by normalized rows
-
-### Usable with caution
-
-- Name-based manual review support
-- Ownership text as a grouped explanatory field
-- Activity text as a coarse thematic field
-- QKB red-flag boolean as a registry presentation signal rather than a final risk label
-
-### Too weak for default automated use
-
-- Fuzzy company matching without exact NIPT
-- Administrator-name joins
-- City-only or address-like joins
-- Treating free-text activity descriptions as stable categories without further coding
-
-## Minimum defensible thesis dataset
-
-If the thesis needs a conservative first analytical dataset, use:
-
-1. `normalized_app_export_rows`
-2. `normalized_qkb_search_rows`
-3. a joined subset where `winner_nipt == business_nipt`
-
-That design keeps provenance visible, avoids weak matching, and stays close to the current repo data quality.
+- QKB Universe collection;
+- QKB document batch extraction;
+- QKB historical extract parsing;
+- QKB PDF text extraction;
+- QKB financial-document extraction.

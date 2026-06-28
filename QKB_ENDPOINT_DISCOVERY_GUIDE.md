@@ -1,3 +1,5 @@
+Archived research idea. Not part of the current thesis implementation.
+
 # QKB Endpoint Discovery Guide
 
 Date: 2026-04-24
